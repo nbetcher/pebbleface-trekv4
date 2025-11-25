@@ -96,20 +96,12 @@ function getWeatherFromLatLong(latitude, longitude) {
   // getWeatherFromLocation('(' + latitude + ',' + longitude + ')');
 }
 function parse_weather_code(code) {
-  switch (code) {
-    case code >= 200 || code <= 232:
-      return 0; //storm
-    case code >= 300 || code <= 531:
-      return 11; //drizzle or rain
-    case code >= 600 || code <= 622:
-      return 13; //snow
-    case code >= 700 || code <= 781:
-      return 20; //fog
-    case code == 800:
-      return 36; //clear
-    case code >= 801 || code <= 804:
-      return 26; //cloudy
-  }
+    if(code >= 200 && code <= 232) return 0;
+    if(code >= 300 && code <= 531) return 11;
+    if(code >= 600 && code <= 622) return 13;
+    if(code >= 700 && code <= 781) return 20;
+    if(code >= 801 && code <= 804) return 26;
+    if(code == 800) return 36;
 
 }
 function getWeatherFromCity(city_name) {
@@ -134,7 +126,7 @@ function getWeatherFromCity(city_name) {
     }
     console.log(response.weather[0].id);
     var temperature = parseInt(response.main.temp) + '\u00B0';
-    var icon = imageId[parse_weather_code(parseInt(response.weather[0].id)) || 36];
+    var icon = imageId[parse_weather_code(parseInt(response.weather[0].id))];
     console.log(parse_weather_code(parseInt(response.weather[0].id)));
 
     Pebble.sendAppMessage({
@@ -209,7 +201,7 @@ Pebble.addEventListener("ready", function (e) {
   //console.log("connect!" + e.ready);
 
   updateWeather();
-
+//TODO add interval setting
   setInterval(function () {
     //console.log("timer fired");
     updateWeather();
