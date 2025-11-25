@@ -20,7 +20,14 @@ module.exports=[
                 "type": "input",
                 "messageKey": "location",
                 "label": "Location",
-                "description": "<strong>You must</strong> enter a location if \"Use GPS\" is NO. Ie. city name or postal/zip code (even if you choose to hide the weather).",
+                "description": "<strong>You must</strong> enter a city name.",
+                "defaultValue": ""
+            },
+            {
+                "type": "input",
+                "messageKey": "apiKey",
+                "label": "API Key",
+                "description": "<strong>You must</strong> enter an OpenWeather API key",
                 "defaultValue": ""
             },
             {
