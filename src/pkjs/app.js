@@ -87,27 +87,27 @@ if (options === null)
     "units": "fahrenheit",
     "hideweather": false,
     "apiKey": "",
-    "location": "London"
+    "location": "London",
+    "refresh_interval": "30000"
   };
-console.log('options: ' + options);
-//TODO get this working again. 
+
 function getWeatherFromLatLong(latitude, longitude) {
-  getWeatherFromCity(options.location);
-  // getWeatherFromLocation('(' + latitude + ',' + longitude + ')');
+  console.log(latitude, longitude);
+  getWeatherFromLocation(`lat=${latitude}&lon=${longitude}`);
 }
 function parse_weather_code(code) {
-    if(code >= 200 && code <= 232) return 0;
-    if(code >= 300 && code <= 531) return 11;
-    if(code >= 600 && code <= 622) return 13;
-    if(code >= 700 && code <= 781) return 20;
-    if(code >= 801 && code <= 804) return 26;
-    if(code == 800) return 36;
+  if (code >= 200 && code <= 232) return 0;
+  if (code >= 300 && code <= 531) return 11;
+  if (code >= 600 && code <= 622) return 13;
+  if (code >= 700 && code <= 781) return 20;
+  if (code >= 801 && code <= 804) return 26;
+  if (code == 800) return 36;
 
 }
-function getWeatherFromCity(city_name) {
-  console.log("get weather called");
+//location string can be a city name, lat/long string, or zipcode
+function getWeatherFromLocation(location_string) {
   var celsius = (options.units == 'celsius');
-  var query = `q=${city_name}&APPID=${options.apiKey}&units=${celsius ? 'metric' : 'imperial'}`;
+  var query = `${location_string}&APPID=${options.apiKey}&units=${celsius ? 'metric' : 'imperial'}`;
   var url = "https://api.openweathermap.org/data/2.5/weather?" + query;
   var req = new XMLHttpRequest();
   req.open('GET', url, true);
@@ -142,12 +142,18 @@ var locationOptions = { "timeout": 15000, "maximumAge": 60000 };
 
 function updateWeather() {
   if (options.hideweather === true) return;
-  getWeatherFromCity(options.location);
+
+  if (options.use_gps === true) {
+    navigator.geolocation.getCurrentPosition(locationSuccess,
+      locationError,
+      locationOptions);
+  } else {
+    getWeatherFromLocation(`q=${options.location}`);
+  }
 }
 
 function locationSuccess(pos) {
-  getWeatherFromLatLong(pos.coords.latitude,
-    pos.coords.longitude);
+  getWeatherFromLatLong(pos.coords.latitude, pos.coords.longitude);
 }
 
 function locationError(err) {
@@ -155,7 +161,7 @@ function locationError(err) {
 
   Pebble.sendAppMessage({
     "icon": 14,
-    "temperature": ""
+    "temperature": "00"
   });
 }
 
@@ -193,23 +199,17 @@ Pebble.addEventListener('webviewclosed', function (e) {
 
   // load the flattened edition of settings
   options = JSON.parse(localStorage.getItem('clay-settings'));
+  console.log(parseInt(options.refresh_interval));
 
   updateWeather();
 });
 
 Pebble.addEventListener("ready", function (e) {
-  //console.log("connect!" + e.ready);
 
   updateWeather();
-//TODO add interval setting
   setInterval(function () {
-    //console.log("timer fired");
     updateWeather();
-    //  }, 60000); // 1 minute
-    //  }, 300000); // 5 minutes
-    //  }, 600000); // 10 minutes
-    //  }, 1200000); // 20 minutes
-  }, 1800000); // 30 minutes
+  }, parseInt(options.refresh_interval) || 1800000);
 
   console.log(e.type);
 });

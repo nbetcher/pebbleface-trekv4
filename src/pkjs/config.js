@@ -1,9 +1,9 @@
 // based on: http://www.themapman.com/pebblewatch/trekv6.html
 
-module.exports=[
+module.exports = [
     {
         "type": "heading",
-        "defaultValue": "TrekV3 Config"
+        "defaultValue": "TrekV3-V2 Config"
     },
     {
         "type": "text",
@@ -20,7 +20,7 @@ module.exports=[
                 "type": "input",
                 "messageKey": "location",
                 "label": "Location",
-                "description": "<strong>You must</strong> enter a city name.",
+                "description": "If you aren't using GPS, <strong>You must</strong> enter a city name. zipcode doesn't appear to work.",
                 "defaultValue": ""
             },
             {
@@ -34,7 +34,7 @@ module.exports=[
                 "type": "toggle",
                 "messageKey": "use_gps",
                 "label": "Use GPS",
-                "description": "If you want to conserve battery, have GPS=NO AND enter your location eg. London.",
+                "description": "If you want to conserve battery, disable using GPS AND enter your location eg. London.",
                 "defaultValue": true
             },
             {
@@ -54,11 +54,42 @@ module.exports=[
                 ]
             },
             {
+                "type": "radiogroup",
+                "messageKey": "refresh_interval",
+                "label": "Refresh Interval",
+                "defaultValue": "1800000",
+                "options": [
+                    {
+                        "label": "1 minute",
+                        "value": "60000"
+                    },
+                    {
+                        "label": "5 minutes",
+                        "value": "300000"
+                    }
+                    ,
+                    {
+                        "label": "10 minutes",
+                        "value": "600000"
+                    }
+                    ,
+                    {
+                        "label": "20 minutes",
+                        "value": "1200000"
+                    }
+                    ,
+                    {
+                        "label": "30 minutes",
+                        "value": "1800000"
+                    }
+                ]
+            },
+            {
                 "type": "toggle",
                 "messageKey": "hideweather",
                 "label": "Hide (and disable) weather",
                 "defaultValue": false
-            },
+            }
         ]
     },
     {
@@ -232,11 +263,11 @@ module.exports=[
                         "label": "Croation",
                         "value": "4."
                     },
-					{
+                    {
                         "label": "Czech",
                         "value": "16."
                     },
-					{
+                    {
                         "label": "Danish",
                         "value": "10."
                     },
@@ -244,19 +275,19 @@ module.exports=[
                         "label": "Dutch",
                         "value": "1."
                     },
-					{
+                    {
                         "label": "English",
                         "value": "0."
                     },
-					{
+                    {
                         "label": "Finnish",
                         "value": "9."
                     },
-					{
+                    {
                         "label": "French",
                         "value": "3."
                     },
-					{
+                    {
                         "label": "German",
                         "value": "2."
                     },
@@ -268,11 +299,11 @@ module.exports=[
                         "label": "Italian",
                         "value": "6."
                     },
-					{
+                    {
                         "label": "Norweigan",
                         "value": "7."
                     },
-					{
+                    {
                         "label": "Portugese",
                         "value": "14."
                     },
@@ -280,7 +311,7 @@ module.exports=[
                         "label": "Slovak",
                         "value": "13."
                     },
-					{
+                    {
                         "label": "Spanish",
                         "value": "5."
                     },
