@@ -371,12 +371,13 @@ void handle_tick( struct tm *tick_time, TimeUnits notused ) {
       hl = highlight_rect[current_language][today];
     }
 #ifdef PBL_PLATFORM_EMERY
-    // emery falls through to the basalt day-strip tables and uses the same 20px
-    // day font, so the per-day highlight offsets are identical; only the strip's
-    // origin differs. Shift the basalt highlight onto the emery day strip
-    // (DAYS_RECT delta: x 25-17=+8, y ~131-98=+33).
-    hl.origin.x += 8;
-    hl.origin.y += 33;
+    // Rescale the basalt weekday-highlight rect (basalt entries are x_i,98,18,20)
+    // onto the emery day strip, matching the Trekv5 binary's tuned i18n tables:
+    //   x = round(basalt_x * 195/144) + 1,  y = 134,  w = 26,  h = 25.
+    hl.origin.x = (hl.origin.x * 195 + 72) / 144 + 1;
+    hl.origin.y = 134;
+    hl.size.w   = 26;
+    hl.size.h   = 25;
 #endif
     layer_set_frame( effect_layer_get_layer(effect_layer2), hl );
   }
@@ -788,6 +789,15 @@ void handle_init( void ) {
 
   // Load fonts
 
+#if defined(PBL_PLATFORM_EMERY)
+  // emery (200x228) uses fonts scaled up ~1.35x from basalt to match the larger
+  // canvas (the Trekv5 reference renders these enlarged sizes).
+  font_days   = fonts_load_custom_font( resource_get_handle( RESOURCE_ID_FONT_LCARS_27  ) );
+  font_date   = fonts_load_custom_font( resource_get_handle( RESOURCE_ID_FONT_LCARS_30  ) );
+  small_batt  = fonts_load_custom_font( resource_get_handle( RESOURCE_ID_FONT_LCARSB_26 ) );
+  small_batt2 = fonts_load_custom_font( resource_get_handle( RESOURCE_ID_FONT_LCARS_24  ) );
+  font_time   = fonts_load_custom_font( resource_get_handle( RESOURCE_ID_FONT_LCARS_92  ) );
+#else
   font_days   = fonts_load_custom_font( resource_get_handle( RESOURCE_ID_FONT_LCARS_20  ) );
   font_date   = fonts_load_custom_font( resource_get_handle( RESOURCE_ID_FONT_LCARS_22  ) );
   small_batt  = fonts_load_custom_font( resource_get_handle( RESOURCE_ID_FONT_LCARSB_19 ) );
@@ -796,6 +806,7 @@ void handle_init( void ) {
   font_time   = fonts_load_custom_font( resource_get_handle( RESOURCE_ID_FONT_LCARS_64 ) );
 #else
   font_time   = fonts_load_custom_font( resource_get_handle( RESOURCE_ID_FONT_LCARS_68  ) );
+#endif
 #endif
 
   // Background image

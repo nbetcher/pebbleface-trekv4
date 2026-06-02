@@ -290,13 +290,23 @@
                 {
                     "file": "fonts/LCARS.ttf",
                     "name": "FONT_LCARS_20",
-                    "targetPlatforms": null,
+                    "targetPlatforms": [
+                        "aplite",
+                        "basalt",
+                        "chalk",
+                        "diorite"
+                    ],
                     "type": "font"
                 },
                 {
                     "file": "fonts/LCARS.ttf",
                     "name": "FONT_LCARS_22",
-                    "targetPlatforms": null,
+                    "targetPlatforms": [
+                        "aplite",
+                        "basalt",
+                        "chalk",
+                        "diorite"
+                    ],
                     "trackingAdjust": 1,
                     "type": "font"
                 },
@@ -304,7 +314,12 @@
                     "characterRegex": "[0-9:. ]",
                     "file": "fonts/LCARS.ttf",
                     "name": "FONT_LCARS_68",
-                    "targetPlatforms": null,
+                    "targetPlatforms": [
+                        "aplite",
+                        "basalt",
+                        "chalk",
+                        "diorite"
+                    ],
                     "type": "font"
                 },
                 {
@@ -316,14 +331,68 @@
                 {
                     "file": "fonts/LCARS.ttf",
                     "name": "FONT_LCARSB_19",
-                    "targetPlatforms": null,
+                    "targetPlatforms": [
+                        "aplite",
+                        "basalt",
+                        "chalk",
+                        "diorite"
+                    ],
                     "trackingAdjust": 1,
                     "type": "font"
                 },
                 {
                     "file": "fonts/LCARS.ttf",
                     "name": "FONT_LCARS_18",
-                    "targetPlatforms": null,
+                    "targetPlatforms": [
+                        "aplite",
+                        "basalt",
+                        "chalk",
+                        "diorite"
+                    ],
+                    "trackingAdjust": 1,
+                    "type": "font"
+                },
+                {
+                    "characterRegex": "[0-9:. ]",
+                    "file": "fonts/LCARS.ttf",
+                    "name": "FONT_LCARS_92",
+                    "targetPlatforms": [
+                        "emery"
+                    ],
+                    "type": "font"
+                },
+                {
+                    "file": "fonts/LCARS.ttf",
+                    "name": "FONT_LCARS_27",
+                    "targetPlatforms": [
+                        "emery"
+                    ],
+                    "type": "font"
+                },
+                {
+                    "file": "fonts/LCARS.ttf",
+                    "name": "FONT_LCARS_30",
+                    "targetPlatforms": [
+                        "emery"
+                    ],
+                    "trackingAdjust": 1,
+                    "type": "font"
+                },
+                {
+                    "file": "fonts/LCARS.ttf",
+                    "name": "FONT_LCARSB_26",
+                    "targetPlatforms": [
+                        "emery"
+                    ],
+                    "trackingAdjust": 1,
+                    "type": "font"
+                },
+                {
+                    "file": "fonts/LCARS.ttf",
+                    "name": "FONT_LCARS_24",
+                    "targetPlatforms": [
+                        "emery"
+                    ],
                     "trackingAdjust": 1,
                     "type": "font"
                 }
