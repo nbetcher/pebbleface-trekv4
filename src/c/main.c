@@ -136,9 +136,9 @@ GRect SECS_AMPM_RECT = ConstantGRect( 167,   0,  31,  28 );
 GRect DATE_RECT      = ConstantGRect(  15, 179, 111,  68 );
 GRect WEEK_RECT      = ConstantGRect(   2, 179, 194,  68 );
 GRect DAYS_RECT      = ConstantGRect(  25, 129, 190,  41 );
-GRect BATT_RECT      = ConstantGRect( 111, 107,  70,  23 );
+GRect BATT_RECT      = ConstantGRect( 111, 107,  72,  23 );
 GRect CHARGING_RECT  = ConstantGRect( 131, 107,  27,  23 );
-GRect BT_RECT        = ConstantGRect( 181, 108,  19,  23 );
+GRect BT_RECT        = ConstantGRect( 183, 108,  17,  23 );
 GRect EMPTY_RECT     = ConstantGRect(   0,   0,   0,   0 );
 GRect TEMP_RECT      = ConstantGRect(  26,  72,  54,  54 );
 GRect ICON_RECT      = ConstantGRect(  24,  29,  27,  27 );
@@ -315,6 +315,14 @@ static void battery_layer_update_proc(Layer *layer, GContext *ctx) {
     rect_empty.size.w     = empty_bars  * bar_w;         // empty bars on the left
     rect_filled.size.w    = filled_bars * bar_w;         // filled bars on the right
     rect_filled.origin.x += empty_bars  * bar_w;         // filled start after the empty
+
+#ifdef PBL_PLATFORM_EMERY
+    // Shift the bar grid 2px right inside the opaque box, widening the gap
+    // between the % text and the first bar to ~5px. The box fill keeps the
+    // lead-in opaque, so no LCARS shows in the gap.
+    rect_empty.origin.x  += 2;
+    rect_filled.origin.x += 2;
+#endif
 
     // draw, if needed
     if (rect_empty.size.w)  graphics_draw_bitmap_in_rect(ctx, battery_empty,  rect_empty);
