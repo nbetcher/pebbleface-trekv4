@@ -3,7 +3,7 @@
 module.exports = [
     {
         "type": "heading",
-        "defaultValue": "TrekV3-V2 Config"
+        "defaultValue": "TrekV4-V2 Config"
     },
     {
         "type": "text",

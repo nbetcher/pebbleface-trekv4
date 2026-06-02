@@ -129,6 +129,19 @@ GRect BT_RECT        = ConstantGRect( 155,  83,  28,  21 );
 GRect EMPTY_RECT     = ConstantGRect(   0,   0,   0,   0 );
 GRect TEMP_RECT      = ConstantGRect( 140,  57,  40,  40 );
 GRect ICON_RECT      = ConstantGRect(   0,   0,   0,   0 );
+#elif defined(PBL_PLATFORM_EMERY)
+GRect TIME_RECT      = ConstantGRect(  44,   8, 149,  97 );
+GRect AMPM_RECT      = ConstantGRect( 171,   0,  35,  28 );
+GRect SECS_AMPM_RECT = ConstantGRect( 167,   0,  31,  28 );
+GRect DATE_RECT      = ConstantGRect(  15, 179, 111,  68 );
+GRect WEEK_RECT      = ConstantGRect(   2, 179, 194,  68 );
+GRect DAYS_RECT      = ConstantGRect(  25, 129, 190,  41 );
+GRect BATT_RECT      = ConstantGRect( 111, 107,  64,  23 );
+GRect CHARGING_RECT  = ConstantGRect( 131, 107,  27,  23 );
+GRect BT_RECT        = ConstantGRect( 175, 108,  25,  23 );
+GRect EMPTY_RECT     = ConstantGRect(   0,   0,   0,   0 );
+GRect TEMP_RECT      = ConstantGRect(  26,  72,  54,  54 );
+GRect ICON_RECT      = ConstantGRect(  24,  29,  27,  27 );
 #else
 GRect TIME_RECT      = ConstantGRect(  29,   5, 110,  72 );
 GRect AMPM_RECT      = ConstantGRect( 123,   0,  25,  21 );
@@ -270,17 +283,26 @@ static void battery_layer_update_proc(Layer *layer, GContext *ctx) {
         graphics_fill_rect(ctx, rect_filled, 0, GCornerNone);
     }
 
-    // handle the full domain of uint8_t
-    if      (battery_charge_percent >= 100) rect_empty.size.w  = 0;
-    else if (battery_charge_percent ==   0) rect_filled.size.w = 0;
-    else { // 1 - 99
-        // calculate first the filled bars
-        rect_filled.size.w   *= ((float)battery_charge_percent / 100.0);
-        // after it, get the empty bars size
-        rect_empty.size.w    -= rect_filled.size.w;
-        // and move the filled bars start after it
-        rect_filled.origin.x += rect_empty.size.w;
-    }
+    // Snap the filled/empty split to WHOLE bars. graphics_draw_bitmap_in_rect()
+    // tiles the segment bitmap to fill the rect, and CLIPS when the rect is not a
+    // whole multiple of the bitmap. The original code split the bar region at a raw
+    // percentage of the pixel width, so the empty/filled boundary almost never fell
+    // on a bar edge: the boundary bar was clipped to a thin stub, and a box width
+    // that is not an exact multiple of the bar width clipped the final bar too.
+    // Snapping the split AND the drawn widths to whole bars makes every bar render
+    // in full, on a fixed grid, on every platform.
+    int bar_w = gbitmap_get_bounds(battery_filled).size.w;
+    if (bar_w < 1) bar_w = 1;
+    int num_bars = rect_empty.size.w / bar_w;            // whole bars that fit the box
+    int filled_bars;
+    if      (battery_charge_percent >= 100) filled_bars = num_bars;
+    else if (battery_charge_percent ==   0) filled_bars = 0;
+    else    filled_bars = (battery_charge_percent * num_bars + 50) / 100; // rounded
+    int empty_bars = num_bars - filled_bars;
+
+    rect_empty.size.w     = empty_bars  * bar_w;         // empty bars on the left
+    rect_filled.size.w    = filled_bars * bar_w;         // filled bars on the right
+    rect_filled.origin.x += empty_bars  * bar_w;         // filled start after the empty
 
     // draw, if needed
     if (rect_empty.size.w)  graphics_draw_bitmap_in_rect(ctx, battery_empty,  rect_empty);
@@ -296,6 +318,8 @@ void invert_screen(bool invert_format) {
     //creating effect layer with inverter effect
 #ifdef PBL_PLATFORM_CHALK
     effect_layer = effect_layer_create(GRect(0,0,180,180));
+#elif defined(PBL_PLATFORM_EMERY)
+    effect_layer = effect_layer_create(GRect(0,0,200,228));
 #else
     effect_layer = effect_layer_create(GRect(0,0,144,168));
 #endif
@@ -336,14 +360,25 @@ void handle_tick( struct tm *tick_time, TimeUnits notused ) {
   }
 
   // Update text layer for current day if day has changed
-  if (startday_is_sunday) {
-    int today = tick_time->tm_wday ; if ( today < 0 ) { today = 6; }
-    layer_set_frame( effect_layer_get_layer(effect_layer2),
-                     highlight_rect2[current_language][today] );
-  } else {
-    int today = tick_time->tm_wday - 1; if ( today < 0 ) { today = 6; }
-    layer_set_frame( effect_layer_get_layer(effect_layer2),
-                     highlight_rect[current_language][today] );
+  {
+    int today;
+    GRect hl;
+    if (startday_is_sunday) {
+      today = tick_time->tm_wday; if ( today < 0 ) { today = 6; }
+      hl = highlight_rect2[current_language][today];
+    } else {
+      today = tick_time->tm_wday - 1; if ( today < 0 ) { today = 6; }
+      hl = highlight_rect[current_language][today];
+    }
+#ifdef PBL_PLATFORM_EMERY
+    // emery falls through to the basalt day-strip tables and uses the same 20px
+    // day font, so the per-day highlight offsets are identical; only the strip's
+    // origin differs. Shift the basalt highlight onto the emery day strip
+    // (DAYS_RECT delta: x 25-17=+8, y ~131-98=+33).
+    hl.origin.x += 8;
+    hl.origin.y += 33;
+#endif
+    layer_set_frame( effect_layer_get_layer(effect_layer2), hl );
   }
 
 #ifdef LANGUAGE_TESTING
@@ -818,6 +853,10 @@ void handle_init( void ) {
   battery_text_layer = text_layer_create(GRect(49, 77, 22, 20));
   text_layer_set_font(battery_text_layer, small_batt2);
   text_layer_set_text_alignment(battery_text_layer, GTextAlignmentLeft);
+#elif defined(PBL_PLATFORM_EMERY)
+  battery_text_layer = text_layer_create(GRect(76, 102, 35, 41));
+  text_layer_set_font(battery_text_layer, small_batt);
+  text_layer_set_text_alignment(battery_text_layer, GTextAlignmentRight);
 #else
   battery_text_layer = text_layer_create(GRect(48, 76, 34, 30));
   text_layer_set_font(battery_text_layer, small_batt);
@@ -898,6 +937,8 @@ layer_add_child(window_layer, text_layer_get_layer(temp_layer));
   GRect footprintbounds = gbitmap_get_bounds(footprint_icon);
 #ifdef PBL_PLATFORM_CHALK
   GRect footprintframe = GRect(57, 159, footprintbounds.size.w, footprintbounds.size.h);
+#elif defined(PBL_PLATFORM_EMERY)
+  GRect footprintframe = GRect(169, 183, footprintbounds.size.w, footprintbounds.size.h);
 #else
   GRect footprintframe = GRect(122, 135, footprintbounds.size.w, footprintbounds.size.h);
 #endif
@@ -908,9 +949,13 @@ layer_add_child(window_layer, text_layer_get_layer(temp_layer));
   layer_add_child(window_layer, bitmap_layer_get_layer(footprint_layer));
 
 
+#if defined(PBL_PLATFORM_EMERY)
+  steps_label = text_layer_create(GRect(  94, 181, 74,  35 ));
+#else
   steps_label = text_layer_create(PBL_IF_ROUND_ELSE(
     GRect(  71, 154, 90,  20 ),
     GRect(  68, 133, 55,  26 )));
+#endif
   text_layer_set_text_color(steps_label, GColorWhite  );
   text_layer_set_background_color(steps_label, GColorClear);
 #ifdef PBL_PLATFORM_CHALK

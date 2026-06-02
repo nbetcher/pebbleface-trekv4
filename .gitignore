@@ -1,0 +1,10 @@
+# Pebble build output
+build/
+.lock-waf_*
+
+# Node
+node_modules/
+
+# Python
+*.pyc
+__pycache__/
