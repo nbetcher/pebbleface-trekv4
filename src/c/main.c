@@ -136,9 +136,9 @@ GRect SECS_AMPM_RECT = ConstantGRect( 167,   0,  31,  28 );
 GRect DATE_RECT      = ConstantGRect(  15, 179, 111,  68 );
 GRect WEEK_RECT      = ConstantGRect(   2, 179, 194,  68 );
 GRect DAYS_RECT      = ConstantGRect(  25, 129, 190,  41 );
-GRect BATT_RECT      = ConstantGRect( 111, 107,  60,  23 );
+GRect BATT_RECT      = ConstantGRect( 111, 107,  70,  23 );
 GRect CHARGING_RECT  = ConstantGRect( 131, 107,  27,  23 );
-GRect BT_RECT        = ConstantGRect( 175, 108,  25,  23 );
+GRect BT_RECT        = ConstantGRect( 181, 108,  19,  23 );
 GRect EMPTY_RECT     = ConstantGRect(   0,   0,   0,   0 );
 GRect TEMP_RECT      = ConstantGRect(  26,  72,  54,  54 );
 GRect ICON_RECT      = ConstantGRect(  24,  29,  27,  27 );
@@ -275,6 +275,17 @@ static void battery_layer_update_proc(Layer *layer, GContext *ctx) {
     GRect rect_empty  = layer_get_bounds(layer);
     GRect rect_filled = rect_empty;
 
+#ifdef PBL_PLATFORM_EMERY
+    // emery: paint the WHOLE battery box opaque first so the LCARS bar never
+    // shows through the text gap, the inter-bar gaps, or the right edge. Then
+    // draw only the white bar pixels on top with GCompOpSet (transparent
+    // segment pixels are skipped, leaving the opaque fill).
+    if (battery_background != BATTBG_SAME_AS_BG_IMAGE) {
+        graphics_context_set_fill_color(ctx, battery_background == BATTBG_BLACK ? GColorBlack : backgroundcol);
+        graphics_fill_rect(ctx, rect_empty, 0, GCornerNone);
+    }
+    graphics_context_set_compositing_mode(ctx, GCompOpSet);
+#else
     graphics_context_set_compositing_mode(ctx, (battery_background == BATTBG_BLACK ? GCompOpAssign : GCompOpSet));
 
     if (battery_background == BATTBG_SAME_AS_BG_COLOR)
@@ -282,6 +293,7 @@ static void battery_layer_update_proc(Layer *layer, GContext *ctx) {
         graphics_context_set_fill_color(ctx, backgroundcol);
         graphics_fill_rect(ctx, rect_filled, 0, GCornerNone);
     }
+#endif
 
     // Snap the filled/empty split to WHOLE bars. graphics_draw_bitmap_in_rect()
     // tiles the segment bitmap to fill the rect, and CLIPS when the rect is not a
