@@ -1,0 +1,87 @@
+TrekV4 watchface
+================
+
+This product includes software developed by Google LLC as part of PebbleOS.
+
+    PebbleOS
+    Copyright 2024 Google LLC
+    Licensed under the Apache License, Version 2.0.
+    https://github.com/google/pebble
+    https://github.com/coredevices/PebbleOS
+
+The full licence text is in LICENSES/pebbleos-APACHE-2.0.txt.
+
+
+What is derived, and how it was modified
+----------------------------------------
+
+The settings-page preview contains translations of PebbleOS graphics code. All
+of them are MODIFIED: they are hand translations from C into Python or
+JavaScript, reduced to the 8-bit rectangular colour path used by the Pebble
+Time 2 (emery), with unreachable branches omitted.
+
+Derived files:
+
+  pblgfx.py
+      Translations into Python of:
+        src/fw/applib/graphics/graphics_circle.c
+            integer_sqrt (via src/libutil/math.c), prv_get_ellipsis_border,
+            prv_get_rotated_precise_point_for_ellipsis,
+            prv_intersection_between_horizontal_and_line,
+            prv_get_angles_mask_edge, prv_draw_scanline_collision_points,
+            prv_get_full_quadrants, prv_calc_draw_config_ellipsis,
+            prv_fill_oval_precise, prv_fill_oval_quadrant_precise,
+            graphics_internal_circle_quadrant_fill_aa
+        src/fw/applib/graphics/graphics_line.c
+            graphics_line_draw_1px_aa, prv_adjust_stroked_line_width,
+            prv_get_circle_border_precise, prv_calc_cap_prepared,
+            prv_calc_cap_horiz, prv_calc_far_points,
+            prv_draw_stroked_line_precise (vertically dominant branch only),
+            graphics_draw_line
+        src/fw/applib/graphics/graphics_private.c
+            graphics_private_plot_pixel,
+            graphics_private_draw_horizontal_line[_prepared],
+            graphics_private_plot_horizontal_line
+        src/fw/applib/graphics/graphics_private_raw.c
+            prv_assign_horizontal_line_raw,
+            graphics_private_raw_blend_color_factor
+
+  src/pkjs/shim/10-gcolor.js
+      gtypes.c: gcolor_blend, gcolor_alpha_blend, grect_contains_point,
+      grect_standardize; gcolor_definitions.h: GColorFromRGBA.
+      The firmware's 4096-byte blending lookup table was verified to equal
+      round((src + 2*dest) / 3) per 2-bit channel for all 4096 entries and is
+      computed rather than shipped.
+
+  src/pkjs/shim/40-gcontext.js
+      graphics.c draw-state model and capture semantics; gbitmap.c
+      gbitmap_get_data_row_info (rectangular branch).
+
+  src/pkjs/shim/50-primitives.js
+      graphics.c: prv_clamp_corner_radius, prv_fill_rect_legacy2 and its
+      packed corner-inset tables, prv_fill_rect_internal,
+      graphics_fill_round_rect; graphics_private.c: graphics_draw_pixel.
+
+  src/pkjs/shim/60-text.js
+      text_layout.c, text_render.c, text_resources.c and applib/fonts/codepoint.c:
+      the layout walk, word iteration, line justification, overflow handling and
+      the 1-bit glyph blit. Retargeted from the PFO resource format onto a baked
+      glyph atlas.
+
+  src/pkjs/shim/70-layer.js
+      applib/ui/layer.c, text_layer.c, bitmap_layer.c, window.c: the layer tree,
+      clipping, and the TextLayer / BitmapLayer update procedures.
+
+  src/pkjs/preview-data.js
+      Generated data. Its corner and line tables are the OUTPUT of the
+      translated rasterisers above.
+
+Not derived from PebbleOS: src/pkjs/shim/75-effects.js and 80-face-emery.js,
+which translate this project's own src/c/effects.c, src/c/effect_layer.c and
+src/c/main.c. effects.c / effect_layer.c originate from the third-party
+pebble-effect-layer library (MIT).
+
+Because make_shim.py strips comments when it inlines the shim into
+src/pkjs/clay-custom.js, the attribution also travels as a string constant
+(PEBBLEOS_ATTRIBUTION in src/pkjs/shim/00-cnum.js), which the settings page
+writes onto its preview dock as a data-attribution attribute.

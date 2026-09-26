@@ -1,21 +1,25 @@
-// config page
+'use strict';
 
-var Clay = require('pebble-clay');
+var Codec = require('./settings-codec.js');
+var Clay = require('@rebble/clay');
 var clayConfig = require('./config.js');
-var clay = new Clay(clayConfig, null, { autoHandleEvents: false });
-
-// constants
-
+// The GENERATED, comment-stripped copy - Clay serialises this function into a data:
+// URL, where every comment byte is paid for twice once percent-encoded. Edit
+// clay-custom.js and re-run make_shim.py; test/gen-freshness.test.js enforces the two
+// staying in sync.
+var clayCustom = require('./clay-custom.gen.js');
+var createMessageQueue = require('./message-queue.js');
 var messageKeys = require('message_keys');
+
+var SETTINGS_STORAGE_KEY = 'clay-settings';
+var PROFILE_STORAGE_PREFIX = 'trekv4-settings:';
+var PROFILE_MIGRATION_KEY = 'trekv4-settings-profile-version';
+var REQUEST_TIMEOUT = 20000;
 
 var CLEAR_DAY = 0;
 var CLEAR_NIGHT = 1;
-var WINDY = 2;
-var COLD = 3;
 var PARTLY_CLOUDY_DAY = 4;
 var PARTLY_CLOUDY_NIGHT = 5;
-var HAZE = 6;
-var CLOUD = 7;
 var RAIN = 8;
 var SNOW = 9;
 var HAIL = 10;
@@ -24,192 +28,544 @@ var STORM = 12;
 var FOG = 13;
 var NA = 14;
 
-var imageId = {
-  0: STORM, //tornado
-  1: STORM, //tropical storm
-  2: STORM, //hurricane
-  3: STORM, //severe thunderstorms
-  4: STORM, //thunderstorms
-  5: HAIL, //mixed rain and snow
-  6: HAIL, //mixed rain and sleet
-  7: HAIL, //mixed snow and sleet
-  8: HAIL, //freezing drizzle
-  9: RAIN, //drizzle
-  10: HAIL, //freezing rain
-  11: RAIN, //showers
-  12: RAIN, //showers
-  13: SNOW, //snow flurries
-  14: SNOW, //light snow showers
-  15: SNOW, //blowing snow
-  16: SNOW, //snow
-  17: HAIL, //hail
-  18: HAIL, //sleet
-  19: HAZE, //dust
-  20: FOG, //foggy
-  21: HAZE, //haze
-  22: HAZE, //smoky
-  23: WINDY, //blustery
-  24: WINDY, //windy
-  25: COLD, //cold
-  26: CLOUDY, //cloudy
-  27: CLOUDY, //mostly cloudy (night)
-  28: CLOUDY, //mostly cloudy (day)
-  29: PARTLY_CLOUDY_NIGHT, //partly cloudy (night)
-  30: PARTLY_CLOUDY_DAY, //partly cloudy (day)
-  31: CLEAR_NIGHT, //clear (night)
-  32: CLEAR_DAY, //sunny
-  33: CLEAR_NIGHT, //fair (night)
-  34: CLEAR_DAY, //fair (day)
-  35: HAIL, //mixed rain and hail
-  36: CLEAR_DAY, //hot
-  37: STORM, //isolated thunderstorms
-  38: STORM, //scattered thunderstorms
-  39: STORM, //scattered thunderstorms
-  40: STORM, //scattered showers
-  41: SNOW, //heavy snow
-  42: SNOW, //scattered snow showers
-  43: SNOW, //heavy snow
-  44: CLOUD, //partly cloudy
-  45: STORM, //thundershowers
-  46: SNOW, //snow showers
-  47: STORM, //isolated thundershowers
-  3200: NA, //not available
-};
+function readStoredSettings(storageKey) {
+  var serialized = null;
+  try {
+    serialized = localStorage.getItem(storageKey || SETTINGS_STORAGE_KEY);
+  } catch (error) {
+    console.warn('Unable to read settings: ' + error.message);
+  }
+  return Codec.migrateStoredSettings(Codec.safeParseStoredSettings(serialized));
+}
 
-var options = localStorage.getItem('clay-settings');
-var options = JSON.parse(options);
+function storageHasSettings(storageKey) {
+  var serialized = null;
+  try {
+    serialized = localStorage.getItem(storageKey || SETTINGS_STORAGE_KEY);
+  } catch (error) {
+    return false;
+  }
+  return Codec.hasMeaningfulSettings(Codec.safeParseStoredSettings(serialized));
+}
 
-// if no options are available, then the JS needs this minimal config to work
-// the watch will have it's defaults set in the C code
-if (options === null)
-  options = {
-    "use_gps": true,
-    "units": "fahrenheit",
-    "hideweather": false,
-    "apiKey": "",
-    "location": "London",
-    "refresh_interval": "30000"
+function writeStoredSettings(settings, storageKey) {
+  try {
+    localStorage.setItem(storageKey || SETTINGS_STORAGE_KEY, JSON.stringify(settings));
+  } catch (error) {
+    console.warn('Unable to save settings: ' + error.message);
+  }
+}
+
+// Run the one-time four-region to thirteen-piece palette migration before Clay
+// generates its page, so the new controls start with the user's existing colours.
+var sharedSettingsAvailable = storageHasSettings(SETTINGS_STORAGE_KEY);
+var storedSettings = readStoredSettings(SETTINGS_STORAGE_KEY);
+writeStoredSettings(storedSettings);
+var options = Codec.weatherOptions(storedSettings);
+var clay = new Clay(clayConfig, clayCustom, { autoHandleEvents: false });
+var activeProfileKey = null;
+var configurationProfileKey = null;
+var configurationSettings = null;
+
+function safePebbleValue(method, fallback) {
+  try {
+    return typeof Pebble[method] === 'function' ? Pebble[method]() : fallback;
+  } catch (error) {
+    console.warn('Unable to read Pebble ' + method + ': ' + error.message);
+    return fallback;
+  }
+}
+
+function readWatchContext() {
+  var watchInfo = safePebbleValue('getActiveWatchInfo', null);
+  var watchToken = safePebbleValue('getWatchToken', '');
+  var accountToken = safePebbleValue('getAccountToken', '');
+  var metadataAvailable = Codec.hasSupportedWatchMetadata(watchInfo);
+  var identity;
+
+  identity = watchToken || ((accountToken || 'anonymous-account') + ':' +
+    (metadataAvailable ?
+      watchInfo.platform + ':' + (watchInfo.model || 'unknown-model') :
+      'unknown-watch'));
+  return {
+    watchInfo: watchInfo,
+    watchToken: watchToken,
+    accountToken: accountToken,
+    metadataAvailable: metadataAvailable,
+    profileKey: PROFILE_STORAGE_PREFIX + encodeURIComponent(identity)
+  };
+}
+
+function activateWatchProfile(context) {
+  context = context || readWatchContext();
+  var serialized = null;
+  var migrationVersion = null;
+
+  // Clay's capability checks require a valid watch object, so its internal
+  // value uses the codec's least-capable fallback. metadataAvailable remains
+  // false so the custom page flags the unknown watch instead of claiming that
+  // it is really an Aplite.
+  clay.meta = {
+    activeWatchInfo: Codec.watchMetadataForClay(context.watchInfo),
+    accountToken: context.accountToken || '',
+    watchToken: context.watchToken || '',
+    userData: { metadataAvailable: context.metadataAvailable }
   };
 
-function getWeatherFromLatLong(latitude, longitude) {
-  console.log(latitude, longitude);
-  getWeatherFromLocation(`lat=${latitude}&lon=${longitude}`);
-}
-function parse_weather_code(code) {
-  if (code >= 200 && code <= 232) return 0;
-  if (code >= 300 && code <= 531) return 11;
-  if (code >= 600 && code <= 622) return 13;
-  if (code >= 700 && code <= 781) return 20;
-  if (code >= 801 && code <= 804) return 26;
-  if (code == 800) return 36;
+  activeProfileKey = context.profileKey;
+  try {
+    serialized = localStorage.getItem(activeProfileKey);
+    migrationVersion = localStorage.getItem(PROFILE_MIGRATION_KEY);
+  } catch (error) {
+    console.warn('Unable to select the watch settings profile: ' + error.message);
+  }
 
-}
-//location string can be a city name, lat/long string, or zipcode
-function getWeatherFromLocation(location_string) {
-  var celsius = (options.units == 'celsius');
-  var query = `${location_string}&APPID=${options.apiKey}&units=${celsius ? 'metric' : 'imperial'}`;
-  var url = "https://api.openweathermap.org/data/2.5/weather?" + query;
-  var req = new XMLHttpRequest();
-  req.open('GET', url, true);
-  req.timeout = 20000;
-  req.onload = function (e) {
-    if (req.status != 200) {
-      return
-    }
-    var response;
+  if (typeof serialized === 'string' && serialized) {
+    storedSettings = Codec.mergeSettings(Codec.defaultSettings(),
+      Codec.safeParseStoredSettings(serialized));
+  } else if (migrationVersion === '1') {
+    // A new watch gets clean, capability-appropriate defaults. This prevents a
+    // B/W picker from rounding and overwriting a color watch's saved palette.
+    storedSettings = Codec.defaultSettings();
+  } else {
+    // First upgrade only: claim the old shared Clay settings for the currently
+    // connected watch so existing users keep their choices.
+    storedSettings = sharedSettingsAvailable ?
+      Codec.mergeSettings(Codec.defaultSettings(), storedSettings) :
+      Codec.defaultSettings();
     try {
-      response = JSON.parse(req.responseText);
+      localStorage.setItem(PROFILE_MIGRATION_KEY, '1');
+    } catch (error) {
+      console.warn('Unable to mark settings profile migration: ' + error.message);
     }
-    catch (error) {
-      console.log(error);
+  }
+
+  writeStoredSettings(storedSettings, activeProfileKey);
+  writeStoredSettings(storedSettings, SETTINGS_STORAGE_KEY);
+  options = Codec.weatherOptions(storedSettings);
+  return context;
+}
+
+var outboundQueue = createMessageQueue(function(dictionary, acknowledge, reject) {
+  Pebble.sendAppMessage(dictionary, acknowledge, reject);
+}, {
+  maxRetries: 3,
+  baseDelay: 500,
+  maxDelay: 2000,
+  attemptTimeout: 10000,
+  onFailure: function(event, state) {
+    var description = event && event.error && event.error.message ?
+      event.error.message : (event && event.message ? event.message : 'unknown error');
+    console.warn('AppMessage failed on attempt ' + state.attempt + ': ' + description +
+      (state.willRetry ? '; retrying' : '; giving up'));
+  }
+});
+
+function queueAppMessage(dictionary, delivery) {
+  if (!dictionary || Object.keys(dictionary).length === 0) {
+    return false;
+  }
+  return outboundQueue.enqueue(dictionary, delivery);
+}
+
+function wmoToIcon(code, isDay) {
+  code = Codec.parseInteger(code);
+  if (code === null || code < 0 || code > 99) {
+    return NA;
+  }
+  if (code === 0 || code === 1) {
+    return isDay ? CLEAR_DAY : CLEAR_NIGHT;
+  }
+  if (code === 2) {
+    return isDay ? PARTLY_CLOUDY_DAY : PARTLY_CLOUDY_NIGHT;
+  }
+  if (code === 3) {
+    return CLOUDY;
+  }
+  if (code === 45 || code === 48) {
+    return FOG;
+  }
+  if ((code >= 51 && code <= 67) || (code >= 80 && code <= 82)) {
+    return RAIN;
+  }
+  if ((code >= 71 && code <= 77) || code === 85 || code === 86) {
+    return SNOW;
+  }
+  if (code === 96 || code === 99) {
+    return HAIL;
+  }
+  if (code === 95) {
+    return STORM;
+  }
+  return NA;
+}
+
+var activeRequest = null;
+var weatherGeneration = 0;
+var weatherTimer = null;
+var weatherRetryTimer = null;
+var weatherRetryAttempt = 0;
+
+function clearWeatherRetry(resetAttempts) {
+  if (weatherRetryTimer !== null) {
+    clearTimeout(weatherRetryTimer);
+    weatherRetryTimer = null;
+  }
+  if (resetAttempts) {
+    weatherRetryAttempt = 0;
+  }
+}
+
+function weatherFailed(generation, reason, retryable) {
+  var delay;
+  if (generation !== weatherGeneration) {
+    return;
+  }
+  console.warn('Weather update failed: ' + reason);
+  if (!retryable || options.hideweather || !options.configured ||
+      weatherRetryTimer !== null) {
+    return;
+  }
+  delay = Codec.weatherRetryDelay(weatherRetryAttempt);
+  if (delay === null) {
+    return;
+  }
+  weatherRetryAttempt++;
+  weatherRetryTimer = setTimeout(function() {
+    weatherRetryTimer = null;
+    if (generation === weatherGeneration && !options.hideweather &&
+        options.configured) {
+      updateWeather(true);
+    }
+  }, delay);
+}
+
+function cancelActiveRequest() {
+  var request = activeRequest;
+  activeRequest = null;
+  if (request) {
+    try {
+      request.abort();
+    } catch (error) {
+      console.warn('Unable to cancel stale weather request: ' + error.message);
+    }
+  }
+}
+
+function requestJson(url, generation, onSuccess) {
+  var request;
+  var finished = false;
+
+  if (generation !== weatherGeneration) {
+    return;
+  }
+  cancelActiveRequest();
+  try {
+    request = new XMLHttpRequest();
+  } catch (error) {
+    weatherFailed(generation, 'unable to create network request', true);
+    return;
+  }
+  activeRequest = request;
+
+  function finishWithError(reason, retryable) {
+    if (finished) {
       return;
     }
-    console.log(response.weather[0].id);
-    var temperature = parseInt(response.main.temp) + '\u00B0';
-    var icon = imageId[parse_weather_code(parseInt(response.weather[0].id))];
-    console.log(parse_weather_code(parseInt(response.weather[0].id)));
-
-    Pebble.sendAppMessage({
-      "icon": icon,
-      "temperature": temperature
-    });
+    finished = true;
+    if (activeRequest === request) {
+      activeRequest = null;
+    }
+    if (generation === weatherGeneration) {
+      weatherFailed(generation, reason, retryable);
+    }
   }
-  req.send(null);
 
-}
-
-var locationOptions = { "timeout": 15000, "maximumAge": 60000 };
-
-function updateWeather() {
-  if (options.hideweather === true) return;
-
-  if (options.use_gps === true) {
-    navigator.geolocation.getCurrentPosition(locationSuccess,
-      locationError,
-      locationOptions);
-  } else {
-    getWeatherFromLocation(`q=${options.location}`);
+  try {
+    request.open('GET', url, true);
+  } catch (error) {
+    finishWithError('request setup failed', true);
+    return;
+  }
+  request.timeout = REQUEST_TIMEOUT;
+  request.onload = function() {
+    var response;
+    if (finished || generation !== weatherGeneration || activeRequest !== request) {
+      return;
+    }
+    if (request.status !== 200) {
+      finishWithError('HTTP ' + request.status,
+        request.status === 0 || request.status === 408 || request.status === 429 ||
+        request.status >= 500);
+      return;
+    }
+    try {
+      response = JSON.parse(request.responseText);
+    } catch (error) {
+      finishWithError('invalid JSON', true);
+      return;
+    }
+    finished = true;
+    activeRequest = null;
+    onSuccess(response);
+  };
+  request.onerror = function() {
+    finishWithError('network error', true);
+  };
+  request.ontimeout = function() {
+    finishWithError('timeout', true);
+  };
+  request.onabort = function() {
+    finished = true;
+  };
+  try {
+    request.send(null);
+  } catch (error) {
+    finishWithError('request could not be sent', true);
   }
 }
 
-function locationSuccess(pos) {
-  getWeatherFromLatLong(pos.coords.latitude, pos.coords.longitude);
+function validCoordinate(value, minimum, maximum) {
+  return typeof value === 'number' && isFinite(value) &&
+    value >= minimum && value <= maximum;
 }
 
-function locationError(err) {
-  console.warn('location error (' + err.code + '): ' + err.message);
+function sendWeather(current, generation) {
+  var temperature;
+  var code;
+  var isDay;
+  var dictionary = {};
 
-  Pebble.sendAppMessage({
-    "icon": 14,
-    "temperature": "00"
+  if (generation !== weatherGeneration || !current || typeof current !== 'object') {
+    if (generation === weatherGeneration) {
+      weatherFailed(generation, 'weather service omitted current conditions', true);
+    }
+    return false;
+  }
+  temperature = current.temperature_2m;
+  code = Codec.parseInteger(current.weather_code);
+  isDay = current.is_day === 1 || current.is_day === true;
+  if (typeof temperature !== 'number' || !isFinite(temperature) ||
+      temperature < -150 || temperature > 150 || code === null ||
+      (current.is_day !== 0 && current.is_day !== 1 &&
+       current.is_day !== false && current.is_day !== true)) {
+    weatherFailed(generation,
+      'weather service returned an incomplete current observation', true);
+    return false;
+  }
+  if (typeof messageKeys.icon === 'undefined' ||
+      typeof messageKeys.temperature === 'undefined') {
+    console.warn('Weather message keys are unavailable');
+    return false;
+  }
+  dictionary[messageKeys.icon] = wmoToIcon(code, isDay);
+  dictionary[messageKeys.temperature] = Math.round(temperature) + '\u00b0';
+  if (!queueAppMessage(dictionary, {
+    key: 'weather',
+    priority: 0
+  })) {
+    weatherFailed(generation, 'weather message queue was full', true);
+    return false;
+  }
+  clearWeatherRetry(true);
+  return true;
+}
+
+function getWeatherFromLatLong(latitude, longitude, generation) {
+  var url;
+  if (!validCoordinate(latitude, -90, 90) ||
+      !validCoordinate(longitude, -180, 180) || generation !== weatherGeneration) {
+    if (generation === weatherGeneration) {
+      weatherFailed(generation, 'weather location contained invalid coordinates', true);
+    }
+    return;
+  }
+  url = 'https://api.open-meteo.com/v1/forecast?latitude=' +
+    encodeURIComponent(latitude) + '&longitude=' + encodeURIComponent(longitude) +
+    '&current=temperature_2m,weather_code,is_day&temperature_unit=' +
+    (options.units === 'celsius' ? 'celsius' : 'fahrenheit');
+  requestJson(url, generation, function(response) {
+    sendWeather(response && response.current, generation);
   });
 }
 
-Pebble.addEventListener('showConfiguration', function (e) {
+function getWeatherFromLocation(location, generation) {
+  var name = typeof location === 'string' ?
+    Codec.truncateText(location.replace(/^\s+|\s+$/g, ''), 100) : '';
+  var url;
+  if (!name || generation !== weatherGeneration) {
+    console.warn('A location is required when GPS is disabled');
+    return;
+  }
+  try {
+    url = 'https://geocoding-api.open-meteo.com/v1/search?name=' +
+      encodeURIComponent(name) + '&count=1&format=json';
+  } catch (error) {
+    weatherFailed(generation, 'location contains invalid text', false);
+    return;
+  }
+  requestJson(url, generation, function(response) {
+    var result = response && response.results && response.results[0];
+    if (!result || !validCoordinate(result.latitude, -90, 90) ||
+        !validCoordinate(result.longitude, -180, 180)) {
+      weatherFailed(generation,
+        'no valid coordinates were found for the configured location', false);
+      return;
+    }
+    getWeatherFromLatLong(result.latitude, result.longitude, generation);
+  });
+}
+
+function updateWeather(isRetry) {
+  var generation = ++weatherGeneration;
+  if (!isRetry) {
+    clearWeatherRetry(true);
+  }
+  cancelActiveRequest();
+
+  if (options.hideweather || !options.configured) {
+    outboundQueue.discard('weather');
+    return;
+  }
+  if (options.use_gps) {
+    if (typeof navigator === 'undefined' || !navigator.geolocation ||
+        typeof navigator.geolocation.getCurrentPosition !== 'function') {
+      weatherFailed(generation, 'phone geolocation is unavailable', false);
+      return;
+    }
+    try {
+      navigator.geolocation.getCurrentPosition(function(position) {
+        if (generation !== weatherGeneration || !position || !position.coords) {
+          return;
+        }
+        getWeatherFromLatLong(position.coords.latitude, position.coords.longitude,
+          generation);
+      }, function(error) {
+        if (generation === weatherGeneration) {
+          weatherFailed(generation, 'location failed: ' +
+            (error && error.message ? error.message : 'unknown error'),
+            !(error && error.code === 1));
+        }
+      }, { timeout: 15000, maximumAge: 60000 });
+    } catch (error) {
+      weatherFailed(generation, 'location request could not be started', true);
+    }
+  } else {
+    getWeatherFromLocation(options.location, generation);
+  }
+}
+
+function scheduleWeather() {
+  if (weatherTimer !== null) {
+    clearTimeout(weatherTimer);
+    weatherTimer = null;
+  }
+  if (options.hideweather || !options.configured) {
+    return;
+  }
+  weatherTimer = setTimeout(function() {
+    weatherTimer = null;
+    updateWeather();
+    scheduleWeather();
+  }, options.refresh_interval);
+}
+
+function activateAndReconcileWatch(context) {
+  var dictionary;
+  activateWatchProfile(context);
+  dictionary = Codec.buildWatchDictionary(storedSettings, messageKeys);
+  queueAppMessage(dictionary, {
+    key: 'configuration',
+    durable: true,
+    priority: 100
+  });
+  updateWeather();
+  scheduleWeather();
+}
+
+Pebble.addEventListener('showConfiguration', function() {
+  activateWatchProfile();
+  // The active watch can change while Clay's webview remains open. Keep both
+  // the destination key and its starting values so the response can never be
+  // merged into a different watch's capability-specific profile.
+  configurationProfileKey = activeProfileKey;
+  configurationSettings = Codec.mergeSettings(Codec.defaultSettings(), storedSettings);
   Pebble.openURL(clay.generateUrl());
 });
 
-Pebble.addEventListener('webviewclosed', function (e) {
-  if (e && !e.response) {
-    console.log('no options received');
+Pebble.addEventListener('webviewclosed', function(event) {
+  var responseSettings;
+  var dictionary;
+  var originProfileKey = configurationProfileKey || activeProfileKey;
+  var originSettings = configurationSettings || storedSettings;
+  var currentContext = readWatchContext();
+  var watchChanged = originProfileKey && currentContext.profileKey !== originProfileKey;
+
+  configurationProfileKey = null;
+  configurationSettings = null;
+
+  if (!event || !event.response) {
+    console.log('Settings page closed without saving');
+    if (watchChanged) {
+      activateAndReconcileWatch(currentContext);
+    }
+    return;
+  }
+  try {
+    // Parse independently of Clay so a localStorage privacy/quota exception in
+    // Clay.getSettings() cannot prevent a valid Save from reaching the watch.
+    // Typed wrappers remain intact until the codec validates and unwraps them.
+    responseSettings = Codec.parseWebviewResponse(event.response);
+  } catch (error) {
+    console.warn('Ignoring invalid settings response: ' + error.message);
+    if (watchChanged) {
+      activateAndReconcileWatch(currentContext);
+    }
     return;
   }
 
-  var dict = clay.getSettings(e.response);
-
-  console.log("new options dump: " + JSON.stringify(dict));
-
-  // transform values to be backward compatible
-  for (var key in dict) {
-    if (dict.hasOwnProperty(key)) {
-      // if the value is a string, simply parse it to int
-      if (typeof dict[key] == "string") {
-        dict[key] = parseInt(dict[key]);
-      }
-    }
+  originSettings = Codec.mergeSettings(originSettings, responseSettings);
+  if (originProfileKey) {
+    writeStoredSettings(originSettings, originProfileKey);
   }
-  console.log("transformed options dump: " + JSON.stringify(dict));
 
-  // we have to delete NaN key, because some options do not have messageKey
-  // those options are used only in this JS!
-  delete dict.NaN;
+  if (watchChanged) {
+    // Preserve the page's valid response for the watch that opened it, but load
+    // and resend the newly connected watch's own profile. In particular, never
+    // send color-watch values from an old page to a newly connected B/W watch.
+    activateAndReconcileWatch(currentContext);
+    return;
+  } else {
+    storedSettings = originSettings;
+    activeProfileKey = originProfileKey || currentContext.profileKey;
+    writeStoredSettings(storedSettings, activeProfileKey);
+    writeStoredSettings(storedSettings, SETTINGS_STORAGE_KEY);
+    options = Codec.weatherOptions(storedSettings);
+  }
 
-  // send new values to pebble
-  Pebble.sendAppMessage(dict);
-
-  // load the flattened edition of settings
-  options = JSON.parse(localStorage.getItem('clay-settings'));
-  console.log(parseInt(options.refresh_interval));
-
+  dictionary = Codec.buildWatchDictionary(storedSettings, messageKeys);
+  queueAppMessage(dictionary, {
+    key: 'configuration',
+    durable: true,
+    priority: 100
+  });
   updateWeather();
+  scheduleWeather();
 });
 
-Pebble.addEventListener("ready", function (e) {
-
+Pebble.addEventListener('ready', function() {
+  var dictionary;
+  activateWatchProfile();
+  // Reconcile the complete latest profile whenever PebbleKit JS starts (which
+  // also covers a phone/watch reconnection after transport state was lost).
+  dictionary = Codec.buildWatchDictionary(storedSettings, messageKeys);
+  queueAppMessage(dictionary, {
+    key: 'configuration',
+    durable: true,
+    priority: 100
+  });
+  outboundQueue.resume();
   updateWeather();
-  setInterval(function () {
-    updateWeather();
-  }, parseInt(options.refresh_interval) || 1800000);
-
-  console.log(e.type);
+  scheduleWeather();
+  console.log('TrekV4 PebbleKit JS ready');
 });

@@ -1,0 +1,130 @@
+# Builds the Trekv4 PBW and (optionally) publishes it as a tagged GitHub release.
+#
+# Releases are cut manually for now: Actions -> "Build PBW" -> Run workflow.
+# The release version is NOT an input - it is read from package.json's "version"
+# (the app definition the Pebble SDK stamps into the PBW), and the tag is v<version>.
+# Bump package.json (and package-lock.json) before running; the job refuses to
+# overwrite an existing tag.
+
+name: Build PBW
+
+on:
+  workflow_dispatch:
+    inputs:
+      release:
+        description: "Create the v<package.json version> tag and GitHub release"
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+
+concurrency:
+  group: build-pbw-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  # Keep in step with README.md "Prerequisites" - the verified tool/SDK pair.
+  PEBBLE_TOOL_VERSION: "5.0.39"
+  PEBBLE_SDK_VERSION: "4.17"
+  PYTHON_VERSION: "3.13"
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+
+      - name: Read app version
+        id: version
+        run: |
+          version=$(node -p "require('./package.json').version")
+          if ! [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::package.json version '$version' is not MAJOR.MINOR.PATCH"
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "tag=v$version" >> "$GITHUB_OUTPUT"
+          echo "Building Trekv4 $version"
+
+      - name: Refuse to reuse an existing release tag
+        if: inputs.release
+        env:
+          TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          if git ls-remote --exit-code --tags origin "refs/tags/$TAG" >/dev/null; then
+            echo "::error::Tag $TAG already exists. Bump \"version\" in package.json first."
+            exit 1
+          fi
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v6
+
+      - name: Cache Pebble SDK
+        uses: actions/cache@v4
+        with:
+          path: ~/.pebble-sdk/SDKs
+          key: pebble-sdk-${{ env.PEBBLE_SDK_VERSION }}-${{ runner.os }}
+
+      - name: Install Pebble tool and SDK
+        run: |
+          uv tool install "pebble-tool==${PEBBLE_TOOL_VERSION}" --python "${PYTHON_VERSION}"
+          if [ ! -d "$HOME/.pebble-sdk/SDKs/${PEBBLE_SDK_VERSION}" ]; then
+            pebble sdk install "${PEBBLE_SDK_VERSION}"
+          fi
+          pebble sdk activate "${PEBBLE_SDK_VERSION}"
+          pebble --version
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Check and test
+        run: |
+          npm run check
+          npm test
+
+      - name: Build PBW
+        run: pebble build
+
+      - name: Stage artifact
+        id: stage
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          built=$(ls build/*.pbw)
+          label=$(unzip -p "$built" appinfo.json | node -e \
+            "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>console.log(JSON.parse(s).versionLabel))")
+          if [ "$label" != "$VERSION" ]; then
+            echo "::error::PBW versionLabel '$label' does not match package.json '$VERSION'"
+            exit 1
+          fi
+          mkdir -p dist
+          cp "$built" "dist/trekv4-v${VERSION}.pbw"
+          echo "pbw=dist/trekv4-v${VERSION}.pbw" >> "$GITHUB_OUTPUT"
+
+      - name: Upload PBW artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: trekv4-v${{ steps.version.outputs.version }}
+          path: ${{ steps.stage.outputs.pbw }}
+          if-no-files-found: error
+
+      - name: Create tag and release
+        if: inputs.release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.version.outputs.tag }}
+          VERSION: ${{ steps.version.outputs.version }}
+          PBW: ${{ steps.stage.outputs.pbw }}
+        run: |
+          gh release create "$TAG" "$PBW" \
+            --target "$GITHUB_SHA" \
+            --title "Trekv4 v$VERSION" \
+            --generate-notes

@@ -1,3 +1,4 @@
+/* Adapted from pebble-effect-layer (MIT). See THIRD_PARTY_NOTICES.md. */
 #pragma once
 #include <pebble.h>
 #include "effects.h"
