@@ -136,6 +136,9 @@ jobs:
       - name: Build PBW
         run: pebble build
 
+      - name: Check preview font data against the build
+        run: python3 make_font_data.py --check
+
       - name: Stage artifact
         id: stage
         env:

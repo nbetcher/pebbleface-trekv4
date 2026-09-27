@@ -103,6 +103,12 @@ the stripped `clay-custom.gen.js` that the phone actually loads;
 `python3 make_shim.py --check` (also run in CI) reports stale output without
 writing anything.
 
+The preview's font data comes from the compiled fonts, not the TTFs: the glyph
+atlas in `src/pkjs/preview-data.js` (and its copy in `clay-custom.js`) and the
+day-strip metrics in `clay-custom.js`. After changing fonts, `font_days`, or the
+day strings, run `pebble build`, then `python3 make_font_data.py`, then
+`python3 make_shim.py`. CI runs `make_font_data.py --check` after its build.
+
 ## Emulator and device testing
 
 Install the most recent build in an emulator:
