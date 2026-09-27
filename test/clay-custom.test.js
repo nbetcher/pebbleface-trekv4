@@ -275,8 +275,6 @@ test('Clay exposes only settings supported by every declared Pebble class', func
       steps: false, heart: false, label: 'Pebble / Pebble Steel' },
     { platform: 'basalt', model: 'pebble_time', geometry: '144 168', frame: 13,
       steps: true, heart: false, label: 'Pebble Time / Time Steel' },
-    { platform: 'chalk', model: 'pebble_time_round_black_14', geometry: '180 180', frame: 0,
-      steps: true, heart: false, label: 'Pebble Time Round' },
     { platform: 'diorite', model: 'pebble_2_se', geometry: '144 168', frame: 13,
       steps: true, heart: false, label: 'Pebble 2' },
     { platform: 'diorite', model: 'pebble_2_hr', geometry: '144 168', frame: 13,
@@ -284,9 +282,7 @@ test('Clay exposes only settings supported by every declared Pebble class', func
     { platform: 'emery', model: 'pebble_time_2', geometry: '200 228', frame: 13,
       steps: true, heart: true, label: 'Pebble Time 2' },
     { platform: 'flint', model: 'pebble_2_duo', geometry: '144 168', frame: 13,
-      steps: true, heart: false, label: 'Pebble 2 Duo' },
-    { platform: 'gabbro', model: 'pebble_round_2_black', geometry: '260 260', frame: 13,
-      steps: true, heart: false, label: 'Pebble Round 2' }
+      steps: true, heart: false, label: 'Pebble 2 Duo' }
   ];
 
   cases.forEach(function(device) {
@@ -306,9 +302,8 @@ test('Clay exposes only settings supported by every declared Pebble class', func
   });
 });
 
-test('the generated preview matches Pebble palette, battery, inversion, and round assets', function() {
+test('the generated preview matches Pebble palette, battery, and inversion', function() {
   var basalt = buildHarness('basalt', 'pebble_time');
-  var chalk = buildHarness('chalk', 'pebble_time_round_black_14');
 
   assert.equal(count(basalt.canvas.innerHTML, /data-battery-state="full"/g), 8);
   assert.equal(count(basalt.canvas.innerHTML, /data-battery-state="empty"/g), 2);
@@ -322,55 +317,16 @@ test('the generated preview matches Pebble palette, battery, inversion, and roun
     /fill="#ffffff" class="trek-color-target" data-color-key="backgroundcol"/);
   assert.match(basalt.canvas.innerHTML, /fill="#aea382"/,
     'the inverted preset uses Pebble sunlight correction');
-
-  chalk.set('preview_disconnected', true);
-  assert.match(chalk.canvas.innerHTML, /Bluetooth disconnected alert preview/);
-  assert.match(chalk.canvas.innerHTML, /data-color-key="popup_color"/);
-  assert.match(chalk.canvas.innerHTML, /data-preview-role="bluetooth-symbol"/);
-  assert.doesNotMatch(chalk.canvas.innerHTML, /data-preview-role="weather-icon"/,
-    'Chalk has no native weather bitmap geometry');
 });
 
 test('battery preview uses the native geometry for every display family', function() {
   var rect = buildHarness('basalt', 'pebble_time').canvas.innerHTML;
-  var chalk = buildHarness('chalk', 'pebble_time_round_black_14').canvas.innerHTML;
   var emery = buildHarness('emery', 'pebble_time_2').canvas.innerHTML;
 
   assert.match(rect, /x="91" y="82" width="3" height="14"/);
   assert.match(rect, /x="126" y="82" width="3" height="14"/);
-  assert.match(chalk, /x="85" y="83" width="4" height="11"/);
-  assert.match(chalk, /x="127" y="83" width="4" height="11"/);
   assert.match(emery, /x="120" y="110" width="4" height="21"/);
   assert.match(emery, /x="176" y="110" width="4" height="21"/);
-});
-
-test('Chalk classic empty battery checker spans native x+0 through x+4 pixels', function() {
-  var chalk = buildHarness('chalk', 'pebble_time_round_black_14').canvas.innerHTML;
-  var gabbro = buildHarness('gabbro', 'pebble_round_2_black').canvas.innerHTML;
-
-  assert.match(chalk,
-    /data-battery-state="empty"[\s\S]*?<rect x="72" y="83" width="5" height="11"[^>]*trek-empty-pattern/);
-  assert.match(chalk,
-    /data-battery-state="empty"[\s\S]*?<rect x="78" y="83" width="5" height="11"[^>]*trek-empty-pattern/);
-  assert.doesNotMatch(chalk,
-    /<rect x="73" y="83" width="4" height="11"[^>]*trek-empty-pattern/);
-  assert.match(gabbro,
-    /data-battery-state="empty"[\s\S]*?<rect x="102" y="120" width="7" height="16"[^>]*trek-empty-pattern/,
-    'Gabbro checker remains inset by one pixel at its native seven-pixel width');
-});
-
-test('Gabbro uses a dedicated interactive 260px parametric preview', function() {
-  var gabbro = buildHarness('gabbro', 'pebble_round_2_black');
-  var html = gabbro.canvas.innerHTML;
-
-  assert.match(html, /viewBox="0 0 260 260"/);
-  assert.equal(count(html, /data-color-key="customcol\d+"/g), 13);
-  assert.match(html, /data-color-key="bluetooth_color"/);
-  assert.match(html, /x="120" y="120" width="7" height="16"/);
-  assert.match(html, /x="183" y="120" width="7" height="16"/);
-  gabbro.set('preview_disconnected', true);
-  assert.equal(count(gabbro.canvas.innerHTML, /data-preview-role="popup-rail"/g), 6);
-  assert.match(gabbro.canvas.innerHTML, /SHAKE TO DISMISS/);
 });
 
 test('opening a preset frame color does not change the theme until a color is chosen', function() {
@@ -388,7 +344,7 @@ test('opening a preset frame color does not change the theme until a color is ch
 
   [
     { platform: 'basalt', model: 'pebble_time', theme: 8 },
-    { platform: 'gabbro', model: 'pebble_round_2_black', theme: 11 }
+    { platform: 'emery', model: 'pebble_time_2', theme: 11 }
   ].forEach(function(device) {
     var harness = buildHarness(device.platform, device.model);
     var before;
@@ -456,49 +412,30 @@ test('choosing Custom in the theme dropdown preserves the existing custom palett
   }
 });
 
-test('drawn popup text colors are independent targets on vector and raster watches', function() {
+test('drawn popup text colors are independent preview targets', function() {
   var basalt = buildHarness('basalt', 'pebble_time');
-  var chalk = buildHarness('chalk', 'pebble_time_round_black_14');
   var basaltPanel;
-  var chalkPanel;
 
   basalt.set('preview_disconnected', true);
-  chalk.set('preview_disconnected', true);
   assert.match(basalt.canvas.innerHTML,
     /data-color-key="popup_time_color"[^>]*>[^<]*<title>Change disconnect alert clock color<\/title>/);
   assert.match(basalt.canvas.innerHTML,
     /data-color-key="popup_hint_color"[^>]*>SHAKE TO DISMISS<title>Change disconnect alert hint color<\/title>/);
-  assert.match(chalk.canvas.innerHTML, /data-color-key="popup_time_color"/);
-  assert.match(chalk.canvas.innerHTML, /data-color-key="popup_hint_color"/);
 
   basalt.set('backgroundcol', '#555555');
-  chalk.set('backgroundcol', '#555555');
   basaltPanel = basalt.canvas.innerHTML.match(
     /Bluetooth disconnected alert preview"><rect ([^>]+)\/>/);
-  chalkPanel = chalk.canvas.innerHTML.match(
-    /Bluetooth disconnected alert preview"><rect ([^>]+)\/>/);
   assert.ok(basaltPanel);
-  assert.ok(chalkPanel);
   assert.match(basaltPanel[1], /fill="#545454"/);
   assert.match(basaltPanel[1], /data-color-key="backgroundcol"/);
-  assert.match(chalkPanel[1], /fill="#545454"/,
-    'Chalk paints its popup interior with the selected screen background');
-  assert.match(chalkPanel[1], /data-color-key="backgroundcol"/);
   assert.equal(count(basalt.canvas.innerHTML, /data-color-key="backgroundcol"/g), 3,
     'screen, vector popup panel, and vector time notch are targets');
-  assert.equal(count(chalk.canvas.innerHTML, /data-color-key="backgroundcol"/g), 3,
-    'Chalk screen, popup interior, and time notch are background targets');
-  assert.doesNotMatch(chalk.canvas.innerHTML,
-    /data-preview-role="popup-rail"[^>]*data-color-key=/,
-    'Chalk raster rails are not advertised as recolorable');
 });
 
 test('every visible color control has a matching tappable preview target', function() {
   [
-    ['aplite', 'pebble'], ['basalt', 'pebble_time'],
-    ['chalk', 'pebble_time_round_black_14'], ['diorite', 'pebble_2_se'],
-    ['emery', 'pebble_time_2'], ['flint', 'pebble_2_duo'],
-    ['gabbro', 'pebble_round_2_black']
+    ['aplite', 'pebble'], ['basalt', 'pebble_time'], ['diorite', 'pebble_2_se'],
+    ['emery', 'pebble_time_2'], ['flint', 'pebble_2_duo']
   ].forEach(function(device) {
     var harness = buildHarness(device[0], device[1]);
     var targets = {};
@@ -587,10 +524,8 @@ test('fallback watch metadata stays conservative without claiming an Aplite mode
 
 test('every platform preview has complete finite battery geometry', function() {
   [
-    ['aplite', 'pebble'], ['basalt', 'pebble_time'],
-    ['chalk', 'pebble_time_round_black_14'], ['diorite', 'pebble_2_se'],
-    ['emery', 'pebble_time_2'], ['flint', 'pebble_2_duo'],
-    ['gabbro', 'pebble_round_2_black']
+    ['aplite', 'pebble'], ['basalt', 'pebble_time'], ['diorite', 'pebble_2_se'],
+    ['emery', 'pebble_time_2'], ['flint', 'pebble_2_duo']
   ].forEach(function(device) {
     var html = buildHarness(device[0], device[1]).canvas.innerHTML;
     assert.doesNotMatch(html, /NaN|undefined/, device[0] + ' SVG geometry');
@@ -598,12 +533,10 @@ test('every platform preview has complete finite battery geometry', function() {
   });
 });
 
-test('raster icons are not advertised as recolorable while Gabbro vectors are', function() {
+test('raster icons are not advertised as recolorable', function() {
   var basaltHarness = buildHarness('basalt', 'pebble_time');
   var basalt;
   var emery = buildHarness('emery', 'pebble_time_2');
-  var gabbro = buildHarness('gabbro', 'pebble_round_2_black');
-  var weather;
 
   assert.doesNotMatch(basaltHarness.canvas.innerHTML, /data-preview-role="weather-icon"/,
     'untouched raster weather is blank like the native bitmap layer');
@@ -618,34 +551,24 @@ test('raster icons are not advertised as recolorable while Gabbro vectors are', 
   assert.match(emery.canvas.innerHTML, /data-preview-role="heart-icon"[^>]*aria-hidden="true"/);
   assert.doesNotMatch(emery.canvas.innerHTML,
     /data-preview-role="heart-icon"[^>]*data-color-key=/);
-  weather = gabbro.canvas.innerHTML.match(/<g data-preview-role="weather-icon"[^>]+>/);
-  assert.ok(weather);
-  assert.match(weather[0], /data-color-key="othertextcol"/);
 });
 
 test('step-count preview follows each native label and footprint rectangle', function() {
-  var chalk = buildHarness('chalk', 'pebble_time_round_black_14');
   var basalt = buildHarness('basalt', 'pebble_time');
   var emery = buildHarness('emery', 'pebble_time_2');
-  var gabbro = buildHarness('gabbro', 'pebble_round_2_black');
 
-  [chalk, basalt, emery, gabbro].forEach(function(harness) {
+  [basalt, emery].forEach(function(harness) {
     harness.set('bottom_right', '0');
   });
-  assert.match(chalk.canvas.innerHTML, /translate\(57 159\)[\s\S]*>8,421</);
   assert.match(basalt.canvas.innerHTML,
     /translate\(122 136\) scale\(1 1\.05\)[\s\S]*x="123"[^>]*>8,421</);
   assert.match(emery.canvas.innerHTML,
     /translate\(171 188\) scale\(1\.15 1\.2\)[\s\S]*x="168"[^>]*>8,421</);
-  assert.match(gabbro.canvas.innerHTML,
-    /cx="193" cy="219"[\s\S]*x="177" y="225"[^>]*>8,421</);
 });
 
 test('refined preview geometry matches native weather, Bluetooth, battery, and popup drawing', function() {
   var basalt = buildHarness('basalt', 'pebble_time');
-  var chalk = buildHarness('chalk', 'pebble_time_round_black_14');
   var emery = buildHarness('emery', 'pebble_time_2');
-  var gabbro = buildHarness('gabbro', 'pebble_round_2_black');
 
   basalt.set('battery_colorized', true);
   assert.match(basalt.canvas.innerHTML,
@@ -661,31 +584,9 @@ test('refined preview geometry matches native weather, Bluetooth, battery, and p
   assert.match(emery.canvas.innerHTML,
     /d="M189 110h1v1h-1z[^"]*M184 114h2v1h-2z[^"]*M184 124h2v1h-2z[^"]*M189 128h1v1h-1z"/,
     'Time 2 Bluetooth rune is centered in its native layer');
-  assert.match(gabbro.canvas.innerHTML,
-    /d="M207 122h1v1h-1z[^"]*M202 126h2v1h-2z[^"]*M202 136h2v1h-2z[^"]*M207 140h1v1h-1z"/,
-    'Round 2 shares the Time 2 Bluetooth art, centered in its 32x24 notch');
 
-  chalk.set('preview_disconnected', true);
-  assert.equal(count(chalk.canvas.innerHTML, /data-preview-role="popup-rail"/g), 6);
-  assert.match(chalk.canvas.innerHTML, /x="34" y="45" width="7" height="9"/);
-  assert.match(chalk.canvas.innerHTML, /x="43" y="45" width="95" height="9"/,
-    'Round popup keeps the raster artwork gap between rail pieces');
-
-  assert.match(gabbro.canvas.innerHTML,
-    /data-preview-role="weather-icon"[\s\S]*?<circle cx="53" cy="60" r="14"[\s\S]*?M43 50L63 70/,
-    'unconfigured Round 2 weather uses the native unavailable symbol');
-  assert.doesNotMatch(gabbro.canvas.innerHTML, />--°</,
-    'unconfigured native temperature storage is blank');
-  gabbro.set('location', 'Phoenix');
-  assert.match(gabbro.canvas.innerHTML,
-    /data-preview-role="weather-icon"[\s\S]*?<circle cx="53" cy="60" r="7"[\s\S]*?M53 50V53/,
-    'configured Round 2 weather includes the native eight-ray clear icon');
-  assert.match(gabbro.canvas.innerHTML,
-    /<text x="202" y="119"[^>]*text-anchor="start"[^>]*>72°/,
-    'temperature text starts at the native left-aligned Gabbro rectangle');
-  assert.match(gabbro.canvas.innerHTML,
-    /<text x="55" y="170" font-size="16"[^>]*>[^<]+<title>Change secondary text color/,
-    'Round 2 weekday baseline follows the native Antonio 21 metrics');
+  emery.set('preview_disconnected', true);
+  assert.equal(count(emery.canvas.innerHTML, /data-preview-role="popup-rail"/g), 6);
 });
 
 test('heart-rate bracket preview masks the frame before redrawing the day strip', function() {

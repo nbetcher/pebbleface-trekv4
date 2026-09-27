@@ -38,8 +38,7 @@ var frameColorItems = FRAME_DEFAULTS.map(function(defaultValue, index) {
     "group": "frame_palette",
     "label": FRAME_LABELS[index],
     "defaultValue": defaultValue,
-    "sunlight": true,
-    "capabilities": ["NOT_PLATFORM_CHALK"]
+    "sunlight": true
   };
 });
 
@@ -58,8 +57,6 @@ var rectangularThemes = [
   { "label": "Borg", "value": "11" },
   { "label": "Custom — tap the preview", "value": "12" }
 ];
-
-var roundThemes = rectangularThemes.slice(0, 12);
 
 var monochromeThemes = [
   { "label": "Classic monochrome", "value": "0" },
@@ -98,24 +95,6 @@ var config = [
         "type": "select",
         "messageKey": "background",
         "label": "LCARS theme",
-        "description": "Round watches use the original raster artwork, so per-piece recoloring is unavailable.",
-        "defaultValue": "0",
-        "options": roundThemes,
-        "capabilities": ["PLATFORM_CHALK"]
-      },
-      {
-        "type": "select",
-        "messageKey": "background",
-        "label": "LCARS theme",
-        "description": "Choose a preset, or select Custom and tap individual drawn frame pieces in the preview.",
-        "defaultValue": "0",
-        "options": rectangularThemes,
-        "capabilities": ["PLATFORM_GABBRO"]
-      },
-      {
-        "type": "select",
-        "messageKey": "background",
-        "label": "LCARS theme",
         "description": "Choose Classic, or select Custom and tap individual frame pieces in the preview.",
         "defaultValue": "0",
         "options": monochromeThemes,
@@ -147,8 +126,7 @@ var config = [
         "messageKey": "bluetooth_color",
         "label": "Bluetooth symbol",
         "defaultValue": "#FFFFFF",
-        "sunlight": true,
-        "capabilities": ["NOT_PLATFORM_CHALK"]
+        "sunlight": true
       },
       {
         "type": "toggle",
@@ -161,7 +139,6 @@ var config = [
   },
   {
     "type": "section",
-    "capabilities": ["NOT_PLATFORM_CHALK"],
     "items": [{
       "type": "heading",
       "defaultValue": "Custom frame pieces",
@@ -441,7 +418,7 @@ var config = [
         "type": "color",
         "messageKey": "popup_color",
         "label": "Disconnect alert accent",
-        "description": "Changes the drawn alert text on every watch and the vector popup rails. Pebble Time Round rails remain raster artwork.",
+        "description": "Changes the alert text and the popup rails.",
         "defaultValue": "#FF0000",
         "sunlight": true
       },

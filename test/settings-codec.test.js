@@ -94,9 +94,11 @@ test('watch metadata remains unknown unless the platform and firmware are valid'
   assert.equal(Codec.hasSupportedWatchMetadata({
     platform: 'basalt', firmware: { major: 4 }, model: 'pebble_time'
   }), true);
-  assert.equal(Codec.hasSupportedWatchMetadata({
-    platform: 'gabbro', firmware: { major: 4 }
-  }), true);
+  ['chalk', 'gabbro'].forEach(function(round) {
+    assert.equal(Codec.hasSupportedWatchMetadata({
+      platform: round, firmware: { major: 4 }
+    }), false, round + ' is not supported');
+  });
 
   assert.deepEqual(Codec.watchMetadataForClay(null), {
     platform: 'aplite',

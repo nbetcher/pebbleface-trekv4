@@ -15,12 +15,6 @@ typedef struct {
 
 static bool pixel_is_valid(const BitmapInfo *info, int x, int y) {
   if (!grect_contains_point(&info->bounds, &GPoint(x, y))) { return false; }
-#ifdef PBL_ROUND
-  if (info->format == GBitmapFormat8BitCircular) {
-    GBitmapDataRowInfo row = gbitmap_get_data_row_info(info->bitmap, y);
-    return x >= row.min_x && x <= row.max_x;
-  }
-#endif
   return true;
 }
 
@@ -29,11 +23,6 @@ static uint8_t get_pixel(const BitmapInfo *info, int x, int y) {
     return (info->data[y * info->bytes_per_row + x / 8] & (1 << (x % 8)))
         ? GColorWhiteARGB8 : GColorBlackARGB8;
   }
-#ifdef PBL_ROUND
-  if (info->format == GBitmapFormat8BitCircular) {
-    return gbitmap_get_data_row_info(info->bitmap, y).data[x];
-  }
-#endif
   return info->data[y * info->bytes_per_row + x];
 }
 
@@ -44,12 +33,6 @@ static void set_pixel(const BitmapInfo *info, int x, int y, uint8_t color) {
     *byte = (uint8_t)((*byte & ~(1 << (x % 8))) | (bit << (x % 8)));
     return;
   }
-#ifdef PBL_ROUND
-  if (info->format == GBitmapFormat8BitCircular) {
-    gbitmap_get_data_row_info(info->bitmap, y).data[x] = color;
-    return;
-  }
-#endif
   info->data[y * info->bytes_per_row + x] = color;
 }
 

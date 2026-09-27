@@ -14,30 +14,7 @@ typedef struct { uint8_t kind; int16_t x, y, w, h; uint8_t p[6]; int8_t o[6]; ui
 #define FRAME_NSEG 13
 #define FRAME_NBG  12
 
-#if defined(PBL_PLATFORM_GABBRO)
-/* Dedicated 260x260 Round 2 frame. It follows the circular safe area and keeps
-   all interactive/readable content out of the clipped corner regions.
-   HAND-AUTHORED - preserved verbatim by gen_frame_tables.py (no asset to fit). */
-static const FrameSeg FRAME_SEGS[FRAME_NSEG] = {
-  { 1,  19,  20,  43,  31, {21,24,12,0,20,11}, {0,0,0,0,0,0}, 0 },
-  { 0,  65,  20,  76,   9, {0,0,0,0,0,0}, {0,0,0,0,0,0}, 1 },
-  /* The top chord reaches the 128px round safe-area edge at x=196.  The
-     previous 92px width continued another 40px beyond the display circle. */
-  { 0, 144,  20,  52,   9, {0,0,0,0,0,0}, {0,0,0,0,0,0}, 2 },
-  { 0,  19,  54,  18,  56, {0,0,0,0,0,0}, {0,0,0,0,0,0}, 3 },
-  { 2,  19, 112,  24,  43, {24,27,11,0,18,25}, {0,0,0,0,0,0}, 4 },
-  { 0,  48, 120,  55,  16, {0,0,0,0,0,0}, {0,0,0,0,0,0}, 5 },
-  { 0, 105, 120,  88,  16, {0,0,0,0,0,0}, {0,0,0,0,0,0}, 6 },
-  { 0, 195, 120,  29,  16, {0,0,0,0,0,0}, {0,0,0,0,0,0}, 7 },
-  { 1,  19, 184,  24,  39, {27,28,14,0,9,19}, {0,0,0,0,0,0}, 8 },
-  { 0,  48, 184,  58,  16, {0,0,0,0,0,0}, {0,0,0,0,0,0}, 9 },
-  { 0, 109, 184, 115,  16, {0,0,0,1,0,0}, {0,0,0,0,0,0},10 },
-  /* Keep both decorative lower stubs inside the 128px round safe radius.
-     Their former y=231/249 locations were wholly outside the circle. */
-  { 0,  43, 202,   8,  14, {0,0,0,0,0,0}, {0,0,0,0,0,0},11 },
-  { 0,  51, 217,   7,   6, {0,0,3,3,0,0}, {0,0,0,0,0,0},12 },
-};
-#elif defined(PBL_PLATFORM_EMERY)
+#if defined(PBL_PLATFORM_EMERY)
 static const FrameSeg FRAME_SEGS[FRAME_NSEG] = {
   { 1,   2,  15,  33,  22, {15,17, 9, 0,14, 8}, { 0, 0,-1, 0, 1, 0}, 0 },
   { 0,  37,  15,  87,   8, { 0, 0, 0, 0, 0, 0}, {-1, 0,-1, 0,-4,-4}, 1 },
@@ -119,8 +96,7 @@ static const PopupBar POPUP_BARS_144[6] = {
 // rows. The black pixels of the original are a drop shadow onto the (black) notch and are
 // therefore not ink. Time 2 uses its own original art instead: the 11x19 IMAGE_BLUETOOTH
 // (bluetooth-bw~emery.png) that 5.x shipped, 2px strokes and a solid staff. A 1px
-// redraw of the 144 rune looked too thin at that size. Round 2 had no art of its own
-// and shares the Time 2 glyphs (both fit its 32x24 notch).
+// redraw of the 144 rune looked too thin at that size.
 static const uint32_t GLYPH_RUNE_144_ROWS[15] = { 0x0008, 0x0010, 0x0028, 0x0041, 0x008A, 0x0044, 0x0028, 0x0010, 0x0028, 0x0044, 0x008A, 0x0041, 0x0028, 0x0010, 0x0008 };
 #define GLYPH_RUNE_144_W 8
 #define GLYPH_RUNE_144_H 15
@@ -136,8 +112,7 @@ static const uint32_t GLYPH_NOBT_144_ROWS[17] = { 0x0000, 0x0000, 0x0000, 0x0804
 // Quiet Time indicator: the original Trekv5 IMAGE_ICON_QT (trek-qt.png, 17x16 1:1 art,
 // white ink on transparent) at its authored 17x16 frame, so it lands exactly where the
 // original's bitmap layer put it. The Time 2 table redraws the same "QT" (2px strokes
-// -> 3px, 6px letters -> 9px) rather than up-scaling pixels. Round 2 keeps the 1:1 art:
-// like chalk it sits above the top bar, where only ~17px of height is free.
+// -> 3px, 6px letters -> 9px) rather than up-scaling pixels.
 static const uint32_t GLYPH_QT_144_ROWS[16] = { 0x0000, 0x7E78, 0x7EFC, 0x18CC, 0x18CC, 0x18CC, 0x18CC, 0x18CC, 0x18CC, 0x18CC, 0x18CC, 0x18CC, 0x18FC, 0x1878, 0x00C0, 0x00C0 };
 #define GLYPH_QT_144_W 17
 #define GLYPH_QT_144_H 16
@@ -153,7 +128,7 @@ static const uint32_t GLYPH_QT_EM_ROWS[21] = { 0xFF8FE, 0xFF9FF, 0xFF9FF, 0x1C1C
 #define GLYPH_QT_W GLYPH_QT_144_W
 #define GLYPH_QT_H GLYPH_QT_144_H
 #endif
-#if defined(PBL_PLATFORM_EMERY) || defined(PBL_PLATFORM_GABBRO)
+#if defined(PBL_PLATFORM_EMERY)
 #define GLYPH_RUNE_ROWS GLYPH_RUNE_EM_ROWS
 #define GLYPH_RUNE_W GLYPH_RUNE_EM_W
 #define GLYPH_RUNE_H GLYPH_RUNE_EM_H

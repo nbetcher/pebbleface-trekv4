@@ -9,7 +9,7 @@ weather.
 - `src/c/main.c` owns the watch lifecycle, persisted settings, AppMessage state,
   time/date, health, weather presentation, alerts, and battery rendering.
 - `src/c/frame_render.c` and `src/c/frame_tables.h` render the LCARS frame from
-  platform-specific vector geometry on rectangular watches and Pebble Round 2.
+  platform-specific vector geometry.
 - `src/c/effect_layer.c` and `src/c/effects.c` provide the hardened
   inversion/effect layer used by the watchface.
 - `src/pkjs/config.js` is the declarative
@@ -26,11 +26,11 @@ weather.
 | --- | --- | --- | --- | --- | --- |
 | Aplite | 144x168, monochrome rectangle | Vector | No | No | Pebble black/white palette |
 | Basalt | 144x168, color rectangle | Vector | Yes | No | Pebble 64-color palette |
-| Chalk | 180x180, color round | Bitmap | Yes | No | Pebble 64-color palette, except frame segments |
 | Diorite | 144x168, monochrome rectangle | Vector | Yes | Pebble 2 HR model only | Pebble black/white palette |
 | Emery | 200x228, color rectangle | Vector | Yes | Yes | Pebble 64-color palette |
 | Flint | 144x168, monochrome rectangle | Vector | Yes | No | Pebble black/white palette |
-| Gabbro | 260x260, color round | Vector | Yes | No | Pebble 64-color palette |
+
+Round watches (Pebble Time Round and Pebble Round 2) are not supported.
 
 Clay and the live preview use the connected watch's platform and model metadata
 to hide unsupported choices. The Pebble 2 SE and Pebble 2 HR share the Diorite
@@ -50,11 +50,6 @@ The preview remains fixed while the options scroll underneath it and redraws as
 each choice changes. Changes reach the watch after **Save Settings** is selected.
 Battery bars default to the classic white/shaded-white treatment; custom full
 and empty colors are opt-in.
-
-Chalk retains its original raster LCARS frame because its geometry is encoded in
-theme bitmaps. Text, background, and drawn battery colors remain configurable,
-but individual frame pixels cannot be recolored reliably. Replacing those assets
-with round vector geometry would be required to remove this limitation.
 
 Weather and geocoding are provided by
 [Open-Meteo](https://open-meteo.com/) under CC BY 4.0; attribution is also shown
@@ -99,7 +94,7 @@ pebble build
 
 `npm run check` performs fast JavaScript syntax checks, `npm test` runs the
 schema, codec, capability, and generated-preview regression suite, and
-`pebble build` compiles and bundles all seven entries in `targetPlatforms`. The
+`pebble build` compiles and bundles all five entries in `targetPlatforms`. The
 resulting PBW is written beneath `build/`.
 
 After editing `src/pkjs/clay-custom.js` or any file in `src/pkjs/shim/`, run
@@ -117,7 +112,7 @@ pebble install --emulator basalt
 pebble logs --emulator basalt
 ```
 
-Repeat with `aplite`, `chalk`, `diorite`, `emery`, `flint`, and `gabbro` before a release.
+Repeat with `aplite`, `diorite`, `emery`, and `flint` before a release.
 At a minimum, verify the following on each applicable platform:
 
 1. The watchface starts without an AppMessage or persistence error.

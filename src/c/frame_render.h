@@ -1,5 +1,5 @@
 /* Parametric LCARS rendering: background frame, popup pill bars, BT glyphs.
-   Replaces the per-platform PNG assets on every platform except chalk (round).
+   Replaces the per-platform PNG assets on every (rectangular) platform.
    Geometry + colour tables are maintained in frame_tables.h and fitted from
    verified-aligned assets; anti-aliasing is computed per pixel (8x8
    supersampled coverage, blended against the framebuffer and quantized to the

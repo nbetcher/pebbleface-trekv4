@@ -291,11 +291,10 @@ function graphics_draw_line(ctx, p0, p1, runeSegId) {
 
 /* ---- out of scope ------------------------------------------------------ */
 
-/* Gabbro only (main.c:942-998, #ifdef PBL_PLATFORM_GABBRO). */
+/* Not used by the watchface's drawing path. Note that the BitmapLayer update
+ * proc's blit is NOT graphics_draw_bitmap_in_rect - that goes through fbIconBlit. */
 function graphics_draw_circle() { notImplemented('graphics_draw_circle'); }
 function graphics_fill_circle() { notImplemented('graphics_fill_circle'); }
-/* Chalk only (main.c:509, #ifndef PARAMETRIC_LCARS). Note that the BitmapLayer
- * update proc's blit is NOT this call - that goes through fbIconBlit. */
 function graphics_draw_bitmap_in_rect() { notImplemented('graphics_draw_bitmap_in_rect'); }
 
 /* @noinline */

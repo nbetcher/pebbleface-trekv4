@@ -5,15 +5,12 @@
  * src/pkjs/shim/PORTING.txt: C names, C parameter names, C statement order.
  *
  * On emery the captured framebuffer is always GBitmapFormat8Bit, so:
- *   - pixel_is_valid()'s PBL_ROUND / 8BitCircular branch is chalk+gabbro only
- *     and is not translated (it needs per-row min_x/max_x, which the emery
- *     framebuffer does not have).
  *   - get_pixel()/set_pixel()'s GBitmapFormat1Bit / 1BitPalette branches compile
  *     on emery but are unreachable (effects.c:28/41); they are aplite's real
  *     path and are deliberately NOT translated in phase 1. See DEVIATIONS below.
  *
  * DEVIATIONS from the C, all deliberate:
- *  1. The 1-bit and 8BitCircular pixel branches are omitted (dead on emery, and
+ *  1. The 1-bit pixel branches are omitted (dead on emery, and
  *     the shim's framebuffer is 1 byte/pixel by construction - spec section 4.1).
  *  2. apply_invert() writes the framebuffer directly rather than going through
  *     30-fb.js's fbInvert(). The maths is identical ((~v) | 0xC0); doing it here
@@ -69,7 +66,6 @@ var MAX_EFFECTS = 4;
 /* PORT OF src/c/effects.c:pixel_is_valid */
 function pixel_is_valid(info, x, y) {
   if (!grect_contains_point(info.bounds, GPoint(x, y))) { return false; }
-  /* PBL_ROUND / GBitmapFormat8BitCircular row clip: chalk + gabbro only. */
   return true;
 }
 

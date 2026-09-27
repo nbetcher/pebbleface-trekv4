@@ -55,7 +55,7 @@ test('the vector frame exposes exactly thirteen standard Clay color controls', f
   frameItems.forEach(function(item, itemIndex) {
     assert.equal(item.type, 'color');
     assert.equal(item.messageKey, 'customcol' + itemIndex);
-    assert.deepEqual(item.capabilities, ['NOT_PLATFORM_CHALK']);
+    assert.equal(item.capabilities, undefined);
     assert.equal(item.sunlight, true);
   });
 });
@@ -110,19 +110,18 @@ test('the manifest preserves the complete current hardware and resource matrix',
     }).targetPlatforms;
   }
 
+  // Rectangular watches only: no Pebble Time Round (chalk) or Round 2 (gabbro).
   assert.deepEqual(manifest.pebble.targetPlatforms,
-    ['aplite', 'basalt', 'chalk', 'diorite', 'emery', 'flint', 'gabbro']);
-  assert.deepEqual(platforms('IMAGE_FOOTPRINT'),
-    ['basalt', 'chalk', 'diorite', 'emery', 'flint']);
-  assert.deepEqual(platforms('IMAGE_HEART'), ['emery', 'diorite']);
-  assert.deepEqual(platforms('IMAGE_CHARGING'),
     ['aplite', 'basalt', 'diorite', 'emery', 'flint']);
-  assert.deepEqual(platforms('IMAGE_BACKGROUND1'), ['chalk']);
-  assert.deepEqual(platforms('FONT_LCARS_92'), ['emery', 'gabbro']);
+  assert.deepEqual(platforms('IMAGE_FOOTPRINT'), ['basalt', 'diorite', 'emery', 'flint']);
+  assert.deepEqual(platforms('IMAGE_HEART'), ['emery', 'diorite']);
+  assert.equal(platforms('IMAGE_CHARGING'), null, 'every declared platform');
+  assert.equal(media.some(function(resource) { return resource.name === 'IMAGE_BACKGROUND1'; }),
+    false, 'the round-only raster frame is gone');
+  assert.deepEqual(platforms('FONT_LCARS_92'), ['emery']);
   assert.deepEqual(platforms('FONT_LCARS_68'),
     ['aplite', 'basalt', 'diorite', 'flint']);
-  assert.deepEqual(platforms('CLEAR_DAY'),
-    ['aplite', 'basalt', 'diorite', 'emery', 'flint']);
+  assert.equal(platforms('CLEAR_DAY'), null, 'every declared platform');
 });
 
 test('weather location access is explicit opt-in on first run', function() {

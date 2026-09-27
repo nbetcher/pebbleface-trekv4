@@ -207,9 +207,7 @@ void frame_draw_popup_bars(GContext *ctx, Layer *layer, GColor accent) {
 }
 
 GSize frame_popup_panel_size(void) {
-#if defined(PBL_PLATFORM_GABBRO)
-  return GSize(205, 158);
-#elif defined(PBL_PLATFORM_EMERY)
+#if defined(PBL_PLATFORM_EMERY)
   return GSize(157, 122);
 #else
   return GSize(113, 90);

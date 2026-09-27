@@ -794,8 +794,6 @@ function faceBuild(S) {
   S.small_batt = fonts_load_custom_font(resource_get_handle('FONT_LCARSB_26'));
   S.batt_font = fonts_load_custom_font(resource_get_handle('FONT_LCARSB_29'));
   S.font_time = fonts_load_custom_font(resource_get_handle('FONT_LCARS_92'));
-  /* small_batt2 (FONT_LCARS_24) is loaded by the C but every text_layer_set_font
-     using it is inside #ifdef PBL_PLATFORM_CHALK - dead weight on emery. */
 
   /* 1. Background LCARS frame. */
   S.frame_layer = layer_create(GRect(0, 0, S.w, S.h));

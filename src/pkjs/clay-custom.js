@@ -7,17 +7,13 @@ module.exports = function(minified) {
     clayConfig.meta.userData.metadataAvailable === false);
   var platform = watchInfo && watchInfo.platform ? watchInfo.platform : "aplite";
   var model = watchInfo && watchInfo.model ? String(watchInfo.model).toLowerCase() : "";
-  var knownPlatforms = ["aplite", "basalt", "chalk", "diorite", "emery", "flint", "gabbro"];
+  var knownPlatforms = ["aplite", "basalt", "diorite", "emery", "flint"];
 
   if (knownPlatforms.indexOf(platform) === -1) {
     platform = "aplite";
   }
 
-  var isColor = platform === "basalt" || platform === "chalk" ||
-    platform === "emery" || platform === "gabbro";
-  var isRound = platform === "chalk" || platform === "gabbro";
-  var isRasterRound = platform === "chalk";
-  var isParametricRound = platform === "gabbro";
+  var isColor = platform === "basalt" || platform === "emery";
   var hasHealth = platform !== "aplite";
   var hasHrm = platform === "emery" ||
     (platform === "diorite" && model.indexOf("pebble_2_hr") !== -1);
@@ -2443,11 +2439,9 @@ version: TREK_SHIM_VERSION
   var PLATFORM_NAMES = {
     "aplite": "Pebble / Pebble Steel",
     "basalt": "Pebble Time / Time Steel",
-    "chalk": "Pebble Time Round",
     "diorite": "Pebble 2",
     "emery": "Pebble Time 2",
-    "flint": "Pebble 2 Duo",
-    "gabbro": "Pebble Round 2"
+    "flint": "Pebble 2 Duo"
   };
 
   function item(key) {
@@ -2646,7 +2640,7 @@ version: TREK_SHIM_VERSION
   function frameColors(inverted) {
     var result = [];
     var theme = parseInt(numericString(get("background", "0"), 0), 10);
-    var custom = !isRasterRound && theme === 12;
+    var custom = theme === 12;
     var preset = presetFrameColors(theme);
     var i;
     for (i = 0; i < 13; i++) {
@@ -2660,7 +2654,7 @@ version: TREK_SHIM_VERSION
   // Bluetooth rune bitmasks, bit x of row y = ink - the same tables as
   // src/c/frame_tables.h (GLYPH_RUNE_144/EM_ROWS), which reproduce the original
   // IMAGE_BLUETOOTH art. Emitted as 1px runs so the preview matches the watch exactly.
-  // Time 2 and Round 2 share the 11x19 Time 2 art.
+  // Time 2 uses its own 11x19 art.
   var RUNE_ROWS_144 = [0x0008, 0x0010, 0x0028, 0x0041, 0x008A, 0x0044, 0x0028, 0x0010,
     0x0028, 0x0044, 0x008A, 0x0041, 0x0028, 0x0010, 0x0008];
   var RUNE_ROWS_EMERY = [0x0020, 0x0060, 0x00E0, 0x01A0, 0x0323, 0x0326, 0x012C, 0x01F8,
@@ -2741,40 +2735,6 @@ version: TREK_SHIM_VERSION
     return pathFrame(colors, large ? "emery" : "rect144");
   }
 
-  function roundFrame(colors, interactive) {
-    function roundShape(tag, attrs, index) {
-      var label = "Change LCARS frame piece " + (index + 1) + " color";
-      return "<" + tag + " " + attrs + " fill=\"" + colors[index] + "\"" +
-        (interactive ? targetAttributes("customcol" + index, label) : "") + "/>";
-    }
-    return [
-      roundShape("rect", "x=\"13\" y=\"37\" width=\"17\" height=\"58\" rx=\"2\"", 0),
-      roundShape("path", "d=\"M13 91 H30 Q30 99 44 99 V107 H27 Q13 107 13 96 Z\"", 4),
-      roundShape("path", "d=\"M13 101 Q13 98 18 98 H157 Q163 98 163 104 Q163 108 157 108 H13 Z\"", 5),
-      roundShape("rect", "x=\"13\" y=\"111\" width=\"17\" height=\"51\" rx=\"1\"", 8),
-      roundShape("rect", "x=\"32\" y=\"131\" width=\"121\" height=\"2\"", 9),
-      roundShape("path", "d=\"M133 53 H160 V96 H133 Z M136 55 V93 H160 V55 Z\" fill-rule=\"evenodd\"", 2),
-      roundShape("rect", "x=\"133\" y=\"94\" width=\"29\" height=\"13\" rx=\"2\"", 7)
-    ].join("");
-  }
-
-  function gabbroFrame(colors) {
-    return [
-      shape("path", "d=\"M40 20 Q19 20 19 41 V51 H39 V43 Q39 31 51 31 H62 V20 Z\"", 0, colors),
-      shape("rect", "x=\"65\" y=\"20\" width=\"76\" height=\"9\"", 1, colors),
-      shape("rect", "x=\"144\" y=\"20\" width=\"52\" height=\"9\"", 2, colors),
-      shape("rect", "x=\"19\" y=\"54\" width=\"18\" height=\"56\"", 3, colors),
-      shape("path", "d=\"M19 112 H43 V130 Q43 136 54 136 H43 V155 H19 Z\"", 4, colors),
-      shape("rect", "x=\"48\" y=\"120\" width=\"55\" height=\"16\"", 5, colors),
-      shape("rect", "x=\"105\" y=\"120\" width=\"88\" height=\"16\"", 6, colors),
-      shape("rect", "x=\"195\" y=\"120\" width=\"29\" height=\"16\"", 7, colors),
-      shape("path", "d=\"M19 184 H43 V193 Q43 200 57 200 H43 V223 H19 Z\"", 8, colors),
-      shape("rect", "x=\"48\" y=\"184\" width=\"58\" height=\"16\"", 9, colors),
-      shape("rect", "x=\"109\" y=\"184\" width=\"115\" height=\"16\"", 10, colors),
-      shape("rect", "x=\"43\" y=\"202\" width=\"8\" height=\"14\"", 11, colors),
-      shape("rect", "x=\"51\" y=\"217\" width=\"7\" height=\"6\" rx=\"3\"", 12, colors)
-    ].join("");
-  }
 
   function pad(value, width) {
     var result = String(value);
@@ -2868,14 +2828,11 @@ version: TREK_SHIM_VERSION
   // scales with string length so other languages track too.
   var DAY_STRIP = {
     emery:  { x: 25, y: 134, size: 21, pad: 2, boxH: 24, baseline: 155, track: 0.28 },
-    gabbro: { x: 55, y: 146, size: 28, pad: 2, boxH: 32, baseline: 172, track: 0.45 },
-    chalk:  { x: 38, y: 104, size: 16, pad: 1, boxH: 22, baseline: 121, track: 0.28 },
     rect144: { x: 17, y: 99, size: 16, pad: 1, boxH: 18, baseline: 114, track: 0.28 }
   };
 
   function dayStripGeom() {
-    return DAY_STRIP[platform] || (platform === "emery" ? DAY_STRIP.emery :
-      (isParametricRound ? DAY_STRIP.gabbro : (isRasterRound ? DAY_STRIP.chalk : DAY_STRIP.rect144)));
+    return DAY_STRIP[platform] || DAY_STRIP.rect144;
   }
 
   function todayIndex(now) {
@@ -3058,7 +3015,7 @@ version: TREK_SHIM_VERSION
       } else if (full) {
         inner = "<rect x=\"" + inkX + "\" y=\"" + (cellY + (layout.fullTop || 0)) +
           "\" width=\"" + layout.fullW + "\" height=\"" + layout.fullH + "\"" +
-          (layout.fullRound ? " rx=\"1\"" : "") + " fill=\"" + fullColor + "\"/>";
+          " fill=\"" + fullColor + "\"/>";
       } else if (layout.classic === "outline") {
         // An empty cell is a HOLLOW cell of exactly the same 4x21 box as a full one:
         // solid 1px top and bottom caps with 1px sides. Drawn as four filled rects
@@ -3099,21 +3056,19 @@ version: TREK_SHIM_VERSION
     var accent = displayColor("popup_color", 0xFF0000, inverted);
     var timeColor = displayColor("popup_time_color", 0xFFAA00, inverted);
     var hintColor = displayColor("popup_hint_color", 0xFFFFFF, inverted);
-    var railColor = isRasterRound ? previewColor("#FFFFFF", 0xFFFFFF, inverted) : accent;
+    var railColor = accent;
     var panelColor = displayColor("backgroundcol", 0x000000, inverted);
     var panelTarget = targetAttributes("backgroundcol",
       "Change screen and dialog background color");
     var large = platform === "emery";
-    var gabbro = platform === "gabbro";
-    var panelWidth = gabbro ? 205 : (large ? 157 : 113);
-    var panelHeight = gabbro ? 158 : (large ? 122 : 90);
-    var bar = gabbro ? 16 : (large ? 12 : 9);
+    var panelWidth = large ? 157 : 113;
+    var panelHeight = large ? 122 : 90;
+    var bar = large ? 12 : 9;
     var x = Math.round((width - panelWidth) / 2);
     var y = Math.round((height - panelHeight) / 2);
-    var railTarget = isRasterRound ? "" :
-      targetAttributes("popup_color", "Change disconnect alert accent color");
-    var fontSize = gabbro ? 23 : (large ? 18 : 13);
-    var hintSize = gabbro ? 13 : (large ? 10 : 8);
+    var railTarget = targetAttributes("popup_color", "Change disconnect alert accent color");
+    var fontSize = large ? 18 : 13;
+    var hintSize = large ? 10 : 8;
     var popupHour = now.getHours();
     var popupTime = use24h ? pad(popupHour, 2) + ":" + pad(now.getMinutes(), 2) :
       (popupHour % 12 || 12) + ":" + pad(now.getMinutes(), 2) +
@@ -3125,38 +3080,22 @@ version: TREK_SHIM_VERSION
     result += "<rect x=\"" + x + "\" y=\"" + y + "\" width=\"" + panelWidth +
       "\" height=\"" + panelHeight + "\" rx=\"3\" fill=\"" + panelColor + "\"" +
       panelTarget + "/>";
-    if (isRasterRound) {
-      // The Round artwork uses three separate pill pieces on each rail, with
-      // two-pixel transparent gaps. Preserve those gaps instead of approximating
-      // each row as one continuous rounded rectangle.
-      barPieces = [[0,0,7,9],[9,0,95,9],[106,0,7,9],
+    barPieces = large ? [[0,0,9,12],[12,0,133,12],[148,0,9,12],
+      [0,110,9,12],[12,110,133,12],[148,110,9,12]] :
+      [[0,0,7,9],[9,0,95,9],[106,0,7,9],
         [0,81,7,9],[9,81,95,9],[106,81,7,9]];
-      for (j = 0; j < barPieces.length; j++) {
-        result += "<rect data-preview-role=\"popup-rail\" x=\"" + (x + barPieces[j][0]) +
-          "\" y=\"" + (y + barPieces[j][1]) + "\" width=\"" + barPieces[j][2] +
-          "\" height=\"" + barPieces[j][3] + "\" rx=\"" +
-          ((j % 3 === 1) ? 0 : Math.floor(bar / 2)) + "\" fill=\"" + railColor + "\"/>";
-      }
-    } else {
-      barPieces = gabbro ? [[0,0,12,16],[16,0,173,16],[193,0,12,16],
-        [0,142,12,16],[16,142,173,16],[193,142,12,16]] :
-        (large ? [[0,0,9,12],[12,0,133,12],[148,0,9,12],
-          [0,110,9,12],[12,110,133,12],[148,110,9,12]] :
-          [[0,0,7,9],[9,0,95,9],[106,0,7,9],
-            [0,81,7,9],[9,81,95,9],[106,81,7,9]]);
-      for (j = 0; j < barPieces.length; j++) {
-        result += "<rect data-preview-role=\"popup-rail\" x=\"" + (x + barPieces[j][0]) +
-          "\" y=\"" + (y + barPieces[j][1]) + "\" width=\"" + barPieces[j][2] +
-          "\" height=\"" + barPieces[j][3] + "\" rx=\"" +
-          ((j % 3 === 1) ? 0 : Math.floor(bar / 2)) + "\" fill=\"" + railColor + "\"" + railTarget + "/>";
-      }
+    for (j = 0; j < barPieces.length; j++) {
+      result += "<rect data-preview-role=\"popup-rail\" x=\"" + (x + barPieces[j][0]) +
+        "\" y=\"" + (y + barPieces[j][1]) + "\" width=\"" + barPieces[j][2] +
+        "\" height=\"" + barPieces[j][3] + "\" rx=\"" +
+        ((j % 3 === 1) ? 0 : Math.floor(bar / 2)) + "\" fill=\"" + railColor + "\"" + railTarget + "/>";
     }
-    result += "<rect x=\"" + (x + panelWidth - bar - (gabbro ? 79 : (large ? 61 : 44))) +
-      "\" y=\"" + y + "\" width=\"" + (gabbro ? 79 : (large ? 61 : 44)) +
+    result += "<rect x=\"" + (x + panelWidth - bar - (large ? 61 : 44)) +
+      "\" y=\"" + y + "\" width=\"" + (large ? 61 : 44) +
       "\" height=\"" + bar + "\" rx=\"" + Math.floor(bar / 2) + "\" fill=\"" + panelColor +
       "\"" + panelTarget + "/>";
     result += textElement(popupTime, x + panelWidth - bar - 2, y + bar - 2,
-      gabbro ? 10 : (large ? 8 : 6), "end", timeColor, "popup_time_color",
+      large ? 8 : 6, "end", timeColor, "popup_time_color",
       "Change disconnect alert clock color", "font-family:Arial,sans-serif");
     result += textElement("BLUETOOTH", x + panelWidth / 2,
       y + panelHeight / 2 - 3, fontSize, "middle", accent, "popup_color",
@@ -3174,15 +3113,14 @@ version: TREK_SHIM_VERSION
 
   function previewSvgLegacy() {
     var large = platform === "emery";
-    var width = isParametricRound ? 260 : (isRasterRound ? 180 : (large ? 200 : 144));
-    var height = isParametricRound ? 260 : (isRasterRound ? 180 : (large ? 228 : 168));
+    var width = large ? 200 : 144;
+    var height = large ? 228 : 168;
     var inverted = bool(get("invert", false));
     var colors = frameColors(inverted);
     var background = displayColor("backgroundcol", 0x000000, inverted);
     var primary = displayColor("textcol", 0xFFFFFF, inverted);
     var secondary = displayColor("othertextcol", 0xFFFFFF, inverted);
-    var bluetooth = !isRasterRound ? displayColor("bluetooth_color", 0xFFFFFF, inverted) :
-      previewColor("#FFFFFF", 0xFFFFFF, inverted);
+    var bluetooth = displayColor("bluetooth_color", 0xFFFFFF, inverted);
     var rasterInk = previewColor("#FFFFFF", 0xFFFFFF, inverted);
     var checkerDark = previewColor("#000000", 0x000000, inverted);
     var checkerLight = previewColor("#FFFFFF", 0xFFFFFF, inverted);
@@ -3218,9 +3156,7 @@ version: TREK_SHIM_VERSION
     previewTargetCounts = {};
 
     result += "<defs><clipPath id=\"trek-screen-clip\">" +
-      (isRound ? "<circle cx=\"" + (width / 2) + "\" cy=\"" + (height / 2) +
-        "\" r=\"" + (width / 2 - 2) + "\"/>" :
-        "<rect x=\"0\" y=\"0\" width=\"" + width + "\" height=\"" + height + "\" rx=\"4\"/>") +
+      "<rect x=\"0\" y=\"0\" width=\"" + width + "\" height=\"" + height + "\" rx=\"4\"/>" +
       "</clipPath><pattern id=\"trek-empty-pattern\" width=\"2\" height=\"2\" " +
       "patternUnits=\"userSpaceOnUse\"><rect width=\"2\" height=\"2\" fill=\"" +
       checkerDark + "\"/><path d=\"M0 0h1v1H0zM1 1h1v1H1z\" fill=\"" +
@@ -3228,86 +3164,9 @@ version: TREK_SHIM_VERSION
     result += "<rect x=\"0\" y=\"0\" width=\"" + width + "\" height=\"" + height +
       "\" fill=\"" + background + "\"" +
       targetAttributes("backgroundcol", "Change screen background color") + "/>";
-    result += isRasterRound ? roundFrame(colors, false) :
-      (isParametricRound ? gabbroFrame(colors) : rectangularFrame(colors, large));
+    result += rectangularFrame(colors, large);
 
-    if (isRasterRound) {
-      layout = { bx: 72, by: 83, bw: 60, bh: 11, cellW: 6, cellH: 11,
-        inkLeft: 1, inkRight: 1, fullW: 4, fullH: 11,
-        emptyLeft: 0, emptyW: 5, classic: "checker" };
-      result += textElement(time, 129, 75, 48, "end", primary, "textcol",
-        "Change primary text color", "font-family:Impact,'Arial Narrow',sans-serif");
-      result += textElement(upper, 158, 47, 13, "middle", secondary, "othertextcol",
-        "Change secondary text color", "font-family:sans-serif");
-      result += batteryMarkup(layout, background, inverted);
-      result += textElement("80", 68, 94, 12, "end", secondary, "othertextcol",
-        "Change secondary text color", "font-family:sans-serif");
-      result += bluetoothMarkup(disconnected, "M160 84 L172 98 M172 84 L160 98",
-        RUNE_ROWS_144, 165, 86, bluetooth, 1, "");
-      result += textElement(dayLine(), 39, 126, 9, "start", secondary, "othertextcol",
-        "Change secondary text color", "font-family:sans-serif");
-      result += todayHighlight(39, 126, 17, 12, secondary, background, now, 9);
-      if (rightSteps) {
-        result += rasterRunner(57, 159, 10, 13, rasterInk);
-        result += textElement("8,421", 71, 170, 11, "start", secondary, "othertextcol",
-          "Change secondary text color", "font-family:sans-serif");
-      } else {
-        result += textElement(dateText(format, now), 40, 158, 11, "start",
-          secondary, "othertextcol", "Change secondary text color", "font-family:sans-serif");
-      }
-      if (!hiddenWeather) {
-      result += textElement(temperature, 140, 92, 12, "start", secondary,
-          "othertextcol", "Change secondary text color", "font-family:sans-serif");
-      }
-    } else if (isParametricRound) {
-      layout = { bx: 101, by: 120, bw: 90, bh: 16, cellW: 9, cellH: 16,
-        inkLeft: 1, inkRight: 1, fullW: 7, fullH: 16, fullRound: true,
-        emptyLeft: 1, emptyW: 7, classic: "checker" };
-      result += textElement(time, 189, 109, 69, "end", primary, "textcol",
-        "Change primary text color", "font-family:Impact,'Arial Narrow',sans-serif");
-      result += textElement(upper, 215, 62, 18, "middle", secondary, "othertextcol",
-        "Change secondary text color", "font-family:sans-serif");
-      result += batteryMarkup(layout, background, inverted);
-      result += textElement("80", 98, 135, 20, "end", secondary, "othertextcol",
-        "Change secondary text color", "font-family:Impact,'Arial Narrow',sans-serif");
-      result += bluetoothMarkup(disconnected, "M200 124 L214 138 M214 124 L200 138",
-        RUNE_ROWS_EMERY, 202, 122, bluetooth, 2,
-        targetAttributes("bluetooth_color", "Change Bluetooth symbol color"));
-      result += textElement(dayLine(), 55, 170, 16, "start", secondary, "othertextcol",
-        "Change secondary text color", "font-family:sans-serif");
-      result += todayHighlight(55, 170, 26, 23, secondary, background, now, 16);
-      result += textElement(abbreviatedDate(now), 58, 225, 18, "start", primary, "textcol",
-        "Change primary text color", "font-family:'Arial Narrow',Arial,sans-serif;font-weight:600");
-      if (rightSteps) {
-        result += "<g data-preview-role=\"footprint-icon\" fill=\"" + secondary + "\"" +
-          targetAttributes("othertextcol", "Change secondary text color") +
-          "><circle cx=\"193\" cy=\"219\" r=\"4\"/><circle cx=\"197\" cy=\"210\" r=\"3\"/>" +
-          "<circle cx=\"191\" cy=\"207\" r=\"2\"/></g>";
-        result += textElement("8,421", 177, 225, 18, "end", secondary,
-          "othertextcol", "Change secondary text color",
-          "font-family:'Arial Narrow',Arial,sans-serif;font-weight:600");
-      } else {
-        result += textElement(dateText(format, now), 213, 225, 18, "end",
-          secondary, "othertextcol", "Change secondary text color",
-          "font-family:'Arial Narrow',Arial,sans-serif;font-weight:600");
-      }
-      if (!hiddenWeather) {
-        if (weatherConfigured) {
-          result += "<g data-preview-role=\"weather-icon\" fill=\"none\" stroke=\"" + secondary +
-            "\" stroke-width=\"2\"" + targetAttributes("othertextcol",
-              "Change secondary text color") + "><circle cx=\"53\" cy=\"60\" r=\"7\"/>" +
-            "<path d=\"M53 50V53 M60 53L57 56 M63 60H60 M60 67L57 64 " +
-            "M53 70V67 M46 67L49 64 M43 60H46 M46 53L49 56\"/></g>";
-        } else {
-          result += "<g data-preview-role=\"weather-icon\" fill=\"none\" stroke=\"" + secondary +
-            "\" stroke-width=\"2\"" + targetAttributes("othertextcol",
-              "Change secondary text color") + "><circle cx=\"53\" cy=\"60\" r=\"14\"/>" +
-            "<path d=\"M43 50L63 70\"/></g>";
-        }
-        result += textElement(temperature, 202, 119, 20, "start", secondary,
-          "othertextcol", "Change secondary text color", "font-family:sans-serif");
-      }
-    } else if (large) {
+    if (large) {
       layout = { bx: 99, by: 107, bw: 82, bh: 26, cellW: 8, cellH: 24,
         inkLeft: 3, inkRight: 1, fullW: 4, fullH: 21, fullTop: 2,
         classic: "outline" };
@@ -3648,8 +3507,8 @@ version: TREK_SHIM_VERSION
     return previewSvgLegacy();
   }
 
-  var PREVIEW_NATIVE_W = isParametricRound ? 260 : (isRasterRound ? 180 : (platform === "emery" ? 200 : 144));
-  var PREVIEW_NATIVE_H = isParametricRound ? 260 : (isRasterRound ? 180 : (platform === "emery" ? 228 : 168));
+  var PREVIEW_NATIVE_W = platform === "emery" ? 200 : 144;
+  var PREVIEW_NATIVE_H = platform === "emery" ? 228 : 168;
 
   // Draw the preview at the watch's OWN pixel resolution and let the browser scale that
   // bitmap up, instead of letting the SVG render crisply at phone resolution. The watch
@@ -4332,9 +4191,6 @@ version: TREK_SHIM_VERSION
     var frameItems = clayConfig.getItemsByGroup("frame_palette");
     var i;
 
-    if (isRasterRound && background && numericString(background.get(), 0) === "12") {
-      background.set("0");
-    }
     installPreview();
     syncBottom();
     syncWeather();

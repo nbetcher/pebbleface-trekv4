@@ -54,18 +54,6 @@ test('native palette v2 preserves v1 colors and independently themes popup text'
   assert.match(source, /draw_palette\[DRAW_PALETTE_POPUP_HINT\]/);
 });
 
-test('Chalk Bluetooth bitmap replacement retains the current image on allocation failure', function() {
-  var allocation = source.indexOf('GBitmap *replacement = gbitmap_create_with_resource(\n      connected ?');
-  var swap = source.indexOf('GBitmap *old = bluetooth_image;', allocation);
-  var destroy = source.indexOf('if (old) { gbitmap_destroy(old); }', swap);
-
-  assert.ok(allocation >= 0, 'Bluetooth replacement must be allocated explicitly');
-  assert.ok(swap > allocation, 'the current bitmap must be retained until allocation succeeds');
-  assert.ok(destroy > swap, 'the old bitmap must be destroyed only after the replacement is installed');
-  assert.doesNotMatch(source,
-    /if \( bluetooth_image != NULL \) \{\s*gbitmap_destroy\( bluetooth_image \);\s*\}\s*bluetooth_image = gbitmap_create_with_resource/);
-});
-
 test('live step-layout changes tolerate an unavailable optional step label', function() {
   assert.match(source,
     /if \(steps_label\) \{ layer_set_hidden\(text_layer_get_layer\(steps_label\), !steps_status\); \}/);

@@ -16,7 +16,7 @@ var DEFAULT_REFRESH_INTERVAL = 1800000;
 var REFRESH_INTERVALS = [300000, 600000, 1200000, 1800000, 3600000];
 var WEATHER_RETRY_DELAYS = [30000, 120000, 300000];
 var SUPPORTED_PLATFORMS = [
-  'aplite', 'basalt', 'chalk', 'diorite', 'emery', 'flint', 'gabbro'
+  'aplite', 'basalt', 'diorite', 'emery', 'flint'
 ];
 
 var INTEGER_FIELDS = {

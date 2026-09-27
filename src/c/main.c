@@ -18,14 +18,9 @@ WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN 
 #include "effect_layer.h"
 #include "frame_render.h"
 
-/* Parametric LCARS rendering (frame, popup bars, BT glyphs drawn at runtime with
-   computed anti-aliasing; no bitmap resources). chalk (round) keeps the old
-   bitmap pipeline, so its assets remain targeted to chalk in package.json. */
-#ifndef PBL_PLATFORM_CHALK
-#define PARAMETRIC_LCARS 1   /* Non-Chalk resources and layouts use this vector path. */
-#endif
+/* The LCARS frame, popup bars and BT glyphs are drawn at runtime with computed
+   anti-aliasing (frame_render.c); no bitmap resources. Rectangular watches only. */
 
-#if !defined(PBL_PLATFORM_CHALK) && !defined(PBL_PLATFORM_GABBRO)
 static const uint32_t WEATHER_ICONS[] = {
   RESOURCE_ID_CLEAR_DAY,
   RESOURCE_ID_CLEAR_NIGHT,
@@ -43,7 +38,6 @@ static const uint32_t WEATHER_ICONS[] = {
   RESOURCE_ID_FOG,
   RESOURCE_ID_NA,
 };
-#endif
 
 // Setting values
 static bool hideweather;
@@ -125,29 +119,15 @@ static Window         *window;
 EffectLayer           *effect_layer;
 EffectLayer           *effect_layer2;
 
-#ifndef PARAMETRIC_LCARS
-static GBitmap        *bluetooth_image;
-#endif
 static GBitmap        *icon_bitmap = NULL;
 
-#if !defined(PBL_PLATFORM_CHALK) && !defined(PBL_PLATFORM_GABBRO)
 static GBitmap        *battery_charging;
 static BitmapLayer    *charging_layer;
-#endif
 
 static Layer          *battery_layer;
-#ifdef PBL_PLATFORM_GABBRO
-static Layer          *charging_layer;
-static uint8_t         weather_icon_index = 14;
-#endif
-#ifdef PARAMETRIC_LCARS
 static Layer          *bluetooth_layer;        /* glyph drawn from code tables */
 static bool            bt_glyph_connected = false;
 #define BT_LAYER_GET(l) (l)
-#else
-static BitmapLayer    *bluetooth_layer;
-#define BT_LAYER_GET(l) bitmap_layer_get_layer(l)
-#endif
 static BitmapLayer    *icon_layer;
 static Layer          *qt_layer;               /* Quiet Time "QT" indicator */
 
@@ -164,7 +144,7 @@ static GFont          font_days;
 static GFont          font_date;
 static GFont          small_batt;
 static GFont          small_batt2;
-#if defined(PBL_PLATFORM_EMERY) || defined(PBL_PLATFORM_GABBRO)
+#if defined(PBL_PLATFORM_EMERY)
 static GFont          batt_font;   // battery % only, sized so digits match the indicator-bar height
 #endif
 
@@ -185,9 +165,6 @@ static bool      flash_on            = true;   // current flash phase (true = vi
 static bool      bt_accel_on         = false;
 static int       shake_accum         = 0;      // sustained violent-shake accumulator
 static Layer    *popup_layer         = NULL;   // BT-disconnect dialog overlay
-#ifndef PARAMETRIC_LCARS
-static GBitmap  *popup_frame_bitmap  = NULL;   // rendered LCARS pill-bar frame (chalk only)
-#endif
 static GFont     popup_font;                   // "BLUETOOTH DISCONNECTED" (LCARS caps)
 static GFont     popup_hint_font;              // shake hint (LCARS)
 static GFont     popup_time_font;              // dialog clock (LCARS digits)
@@ -206,29 +183,12 @@ static uint8_t 		  weather_timeout_minutes = 0;
 
 int charge_percent = 0;
 
-#ifdef PARAMETRIC_LCARS
 static Layer       *frame_layer;               /* parametric LCARS frame */
-#else
-static GBitmap     *background_image;
-static BitmapLayer *background_layer;
-#endif
 
 
 // Define layer rectangles (x, y, width, height)
 
-#ifdef PBL_PLATFORM_CHALK
-GRect TIME_RECT      = ConstantGRect(  0,  11, 131,  72 );
-GRect SECS_AMPM_RECT = ConstantGRect( 132,  27,  30,  21 );
-GRect DATE_RECT      = ConstantGRect(   0,   0,   0,   0 );
-GRect WEEK_RECT      = ConstantGRect(  40, 132, 180,  50 );
-GRect DAYS_RECT      = ConstantGRect(  38, 104, 140,  30 );
-GRect BATT_RECT      = ConstantGRect(  72,  83,  60,  11 );
-GRect BT_RECT        = ConstantGRect( 155,  83,  28,  21 );
-GRect QT_RECT        = ConstantGRect(  84,   7,  17,  16 );  // original Trekv5 chalk placement
-GRect EMPTY_RECT     = ConstantGRect(   0,   0,   0,   0 );
-GRect TEMP_RECT      = ConstantGRect( 140,  57,  40,  40 );
-GRect ICON_RECT      = ConstantGRect(   0,   0,   0,   0 );
-#elif defined(PBL_PLATFORM_EMERY)
+#if defined(PBL_PLATFORM_EMERY)
 GRect TIME_RECT      = ConstantGRect(  44,   8, 149,  97 );
 GRect AMPM_RECT      = ConstantGRect( 171,   0,  35,  28 );
 GRect SECS_AMPM_RECT = ConstantGRect( 167,   0,  31,  28 );
@@ -242,26 +202,6 @@ GRect QT_RECT        = ConstantGRect(  22, 108,  23,  22 );  // original Trekv5 
 GRect EMPTY_RECT     = ConstantGRect(   0,   0,   0,   0 );
 GRect TEMP_RECT      = ConstantGRect(  26,  72,  54,  54 );
 GRect ICON_RECT      = ConstantGRect(  24,  29,  27,  27 );
-#elif defined(PBL_PLATFORM_GABBRO)
-/* Pebble Round 2: dedicated 260x260 composition, scaled from the authentic
-   Round layout rather than falling through to the 144x168 rectangle geometry. */
-GRect TIME_RECT      = ConstantGRect(   0,  16, 189, 104 );
-GRect AMPM_RECT      = ConstantGRect( 191,  39,  49,  30 );
-GRect SECS_AMPM_RECT = ConstantGRect( 191,  39,  43,  30 );
-/* Bottom content is inset to the 128px circular safe area.  These bounds keep
-   the glyph ink visible instead of relying on the display edge to clip it. */
-GRect DATE_RECT      = ConstantGRect(  58, 201,  82,  27 );
-GRect WEEK_RECT      = ConstantGRect( 143, 201,  70,  27 );
-/* Lift the weekday ink clear of the lower LCARS row at y=184; languages with
-   descenders must not touch the decorative bar. */
-GRect DAYS_RECT      = ConstantGRect(  55, 146, 202,  43 );
-GRect BATT_RECT      = ConstantGRect( 101, 120,  90,  16 );
-GRect CHARGING_RECT  = ConstantGRect( 151, 120,  29,  17 );
-GRect BT_RECT        = ConstantGRect( 192, 120,  32,  24 );
-GRect QT_RECT        = ConstantGRect( 122,   2,  17,  16 );  // chalk's spot: centred above the top bar (y20), inside the round edge
-GRect EMPTY_RECT     = ConstantGRect(   0,   0,   0,   0 );
-GRect TEMP_RECT      = ConstantGRect( 202,  82,  58,  58 );
-GRect ICON_RECT      = ConstantGRect(  36,  43,  35,  35 );
 #else
 GRect TIME_RECT      = ConstantGRect(  29,   5, 110,  72 );  // optimal - tested shifting left (width 108) = +539 RED (whole clock misaligns); the 51px thick red is the digit-width anamorphic, not position
 GRect AMPM_RECT      = ConstantGRect( 123,   0,  25,  21 );
@@ -278,24 +218,6 @@ GRect TEMP_RECT      = ConstantGRect(  19,  53,  40,  40 );
 GRect ICON_RECT      = ConstantGRect(  17,  21,  20,  20 );
 #endif
 
-#ifndef PARAMETRIC_LCARS
-static const uint32_t background_images_array[] ={
-  RESOURCE_ID_IMAGE_BACKGROUND1,
-#ifdef PBL_COLOR
-  RESOURCE_ID_IMAGE_BACKGROUND2,
-  RESOURCE_ID_IMAGE_BACKGROUND3,
-  RESOURCE_ID_IMAGE_BACKGROUND4,
-  RESOURCE_ID_IMAGE_BACKGROUND5,
-  RESOURCE_ID_IMAGE_BACKGROUND6,
-  RESOURCE_ID_IMAGE_BACKGROUND7,
-  RESOURCE_ID_IMAGE_BACKGROUND8,
-  RESOURCE_ID_IMAGE_BACKGROUND9,
-  RESOURCE_ID_IMAGE_BACKGROUND10,
-  RESOURCE_ID_IMAGE_BACKGROUND11,
-  RESOURCE_ID_IMAGE_BACKGROUND12
-#endif
-};
-#endif
 
 // Define placeholders for time and date
 static char time_text[] = "00:00";
@@ -316,7 +238,7 @@ static bool bt_status_initialized;
   static int speed = 5;
 #endif
 
-#if defined(PBL_HEALTH) && !defined(PBL_PLATFORM_GABBRO)
+#if defined(PBL_HEALTH)
 static TextLayer *steps_label;
 static GBitmap *footprint_icon;
 static BitmapLayer *footprint_layer;
@@ -324,9 +246,7 @@ static BitmapLayer *footprint_layer;
 static TextLayer *steps_label;
 static Layer *footprint_layer;
 #endif
-#if defined(PBL_HEALTH) && defined(PBL_PLATFORM_GABBRO)
-#define FOOTPRINT_LAYER_GET(l) (l)
-#elif defined(PBL_HEALTH)
+#if   defined(PBL_HEALTH)
 #define FOOTPRINT_LAYER_GET(l) bitmap_layer_get_layer(l)
 #endif
 
@@ -435,7 +355,6 @@ static TextLayer * setup_text_layer( GRect rect, GTextAlignment align , GFont fo
   return newLayer;
 }
 
-#ifdef PARAMETRIC_LCARS
 /* LCARS frame, drawn parametrically with computed AA (see frame_render.c) */
 static void frame_layer_update( Layer *layer, GContext *ctx ) {
   frame_draw_background( ctx, layer, (uint8_t)current_background );
@@ -449,7 +368,6 @@ static void bluetooth_layer_update( Layer *layer, GContext *ctx ) {
   frame_draw_bt_glyph( ctx, b, bt_glyph_connected,
                        (GColor){ .argb = draw_palette[DRAW_PALETTE_BT] } );
 }
-#endif
 
 /* Quiet Time indicator: shown only while the watch's Quiet Time is on, as the original
    Trekv5 did. The firmware has no Quiet Time event, so handle_tick re-polls it. */
@@ -517,32 +435,15 @@ static void popup_update_proc(Layer *layer, GContext *ctx) {
   int w = b.size.w, h = b.size.h;
   GColor accent = (GColor){ .argb = draw_palette[DRAW_PALETTE_POPUP] };
   // 1. Draw the LCARS pill-bar frame: themed panel + accent end-capped bars.
-#ifdef PARAMETRIC_LCARS
   //    Drawn parametrically with computed AA (geometry fitted from the original
   //    popup_lcars.html raster; see frame_render.c) - follows any accent colour.
   graphics_context_set_fill_color(ctx, backgroundcol);
   graphics_fill_rect(ctx, GRect(0, 0, w, h), 0, GCornerNone);
   frame_draw_popup_bars(ctx, layer, accent);
-#else
-  //    chalk (round): the pre-rendered per-platform PNG.
-  if (popup_frame_bitmap) {
-    graphics_context_set_compositing_mode(ctx, GCompOpAssign);
-    graphics_draw_bitmap_in_rect(ctx, popup_frame_bitmap, GRect(0, 0, w, h));
-  } else {
-    graphics_context_set_fill_color(ctx, backgroundcol);
-    graphics_fill_rect(ctx, GRect(0, 0, w, h), 3, GCornersAll);
-  }
-#endif
-#if defined(PBL_PLATFORM_GABBRO)
-  const int bar = 16, lh_big = 30, lh_hint = 18, lh_time = 14;
-#elif defined(PBL_PLATFORM_EMERY)
+#if defined(PBL_PLATFORM_EMERY)
   const int bar = 12, lh_big = 30, lh_hint = 18, lh_time = 14;
 #else
   const int bar = 9, lh_big = 21, lh_hint = 13, lh_time = 12;
-#endif
-#ifndef PARAMETRIC_LCARS
-  graphics_context_set_fill_color(ctx, backgroundcol);
-  graphics_fill_rect(ctx, GRect(0, bar, w, h - 2 * bar), 0, GCornerNone);
 #endif
   // 2. Live time in a themed LCARS notch on the top bar.
   char tbuf[12]; time_t now = time(NULL); struct tm *tt = localtime(&now);
@@ -785,21 +686,8 @@ static void bt_alert_start(void) {
   Handle bluetooth events
 */
 void handle_bluetooth( bool connected ) {
-#ifdef PARAMETRIC_LCARS
   bt_glyph_connected = connected;             // glyph picked at draw time (code tables)
   if (bluetooth_layer) { layer_mark_dirty(bluetooth_layer); }
-#else
-  GBitmap *replacement = gbitmap_create_with_resource(
-      connected ? RESOURCE_ID_IMAGE_BLUETOOTH : RESOURCE_ID_IMAGE_NO_BLUETOOTH );
-  if (replacement) {
-    if (bluetooth_layer) { bitmap_layer_set_bitmap(bluetooth_layer, replacement); }
-    GBitmap *old = bluetooth_image;
-    bluetooth_image = replacement;
-    if (old) { gbitmap_destroy(old); }
-  } else {
-    APP_LOG(APP_LOG_LEVEL_ERROR, "Unable to replace Bluetooth status bitmap");
-  }
-#endif
 
   if ( !bt_status_initialized || prev_bt_status != connected ) {
     if ( connected ) {
@@ -820,9 +708,6 @@ void handle_bluetooth( bool connected ) {
 void handle_battery( BatteryChargeState charge_state ) {
   static char battery_text[8] = "+100";
 
-#if defined(PBL_PLATFORM_GABBRO)
-  if (charging_layer) { layer_set_hidden(charging_layer, !charge_state.is_charging); }
-#elif !defined(PBL_PLATFORM_CHALK)
   if (charging_layer) {
     layer_set_hidden(bitmap_layer_get_layer(charging_layer), !charge_state.is_charging);
   }
@@ -830,7 +715,6 @@ void handle_battery( BatteryChargeState charge_state ) {
   if ( charge_state.is_charging )
     snprintf(battery_text, sizeof(battery_text), "+%u", charge_state.charge_percent);
   else
-#endif
     snprintf(battery_text, sizeof(battery_text), "%u", charge_state.charge_percent);
 
   battery_charge_percent = charge_state.charge_percent;
@@ -862,10 +746,6 @@ static void battery_layer_update_proc(Layer *layer, GContext *ctx) {
     const int NSEG = 10;
 #if defined(PBL_PLATFORM_EMERY)
     const int cell_w = 8, cell_h = 24, ink_left = 3, ink_right = 1;
-#elif defined(PBL_PLATFORM_CHALK)
-    const int cell_w = 6, cell_h = 11, ink_left = 1, ink_right = 1;
-#elif defined(PBL_PLATFORM_GABBRO)
-    const int cell_w = 9, cell_h = 16, ink_left = 1, ink_right = 1;
 #else
     const int cell_w = 5, cell_h = 17, ink_left = 1, ink_right = 1;
 #endif
@@ -918,11 +798,7 @@ void invert_screen(bool invert_format) {
     Layer *window_layer = window_get_root_layer(window);
 
     //creating effect layer with inverter effect
-#ifdef PBL_PLATFORM_CHALK
-    effect_layer = effect_layer_create(GRect(0,0,180,180));
-#elif defined(PBL_PLATFORM_GABBRO)
-    effect_layer = effect_layer_create(GRect(0,0,260,260));
-#elif defined(PBL_PLATFORM_EMERY)
+#if defined(PBL_PLATFORM_EMERY)
     effect_layer = effect_layer_create(GRect(0,0,200,228));
 #else
     effect_layer = effect_layer_create(GRect(0,0,144,168));
@@ -942,33 +818,16 @@ void invert_screen(bool invert_format) {
 
 #ifdef PBL_COLOR
 void bgcol() {
-#ifdef PARAMETRIC_LCARS
     if (frame_layer) { layer_mark_dirty(frame_layer); } // redraw from colour table
-#else
-    GBitmap *replacement = gbitmap_create_with_resource(
-        background_images_array[current_background]);
-    if (replacement) {
-      if (background_layer) {
-        bitmap_layer_set_bitmap(background_layer, replacement);
-        layer_set_hidden(bitmap_layer_get_layer(background_layer), false);
-      }
-      GBitmap *old = background_image;
-      background_image = replacement;
-      if (old) { gbitmap_destroy(old); }
-    }
-#endif
 }
 #endif
 
 // Apply the 13 independently configurable frame-segment colours and repaint.
 static void apply_custom_colors( void ) {
   frame_set_custom_colors( &draw_palette[DRAW_PALETTE_FRAME_FIRST] );
-#ifdef PARAMETRIC_LCARS
   if ( frame_layer ) { layer_mark_dirty( frame_layer ); }   // may run before the layer exists (init)
-#endif
 }
 
-#if !defined(PBL_PLATFORM_CHALK) && !defined(PBL_PLATFORM_GABBRO)
 static bool replace_weather_icon(uint32_t resource_id) {
   GBitmap *replacement = gbitmap_create_with_resource(resource_id);
   if (!replacement) { return false; }
@@ -978,65 +837,7 @@ static bool replace_weather_icon(uint32_t resource_id) {
   if (old) { gbitmap_destroy(old); }
   return true;
 }
-#endif
 
-#ifdef PBL_PLATFORM_GABBRO
-static void charging_layer_update(Layer *layer, GContext *ctx) {
-  GRect b = layer_get_bounds(layer);
-  graphics_context_set_stroke_color(ctx, othertextcol);
-  graphics_context_set_stroke_width(ctx, 3);
-  GPoint pts[] = { GPoint(b.size.w * 3 / 5, 1), GPoint(b.size.w / 3, b.size.h / 2),
-                   GPoint(b.size.w * 3 / 5, b.size.h / 2), GPoint(b.size.w / 3, b.size.h - 1) };
-  for (int i = 0; i < 3; i++) { graphics_draw_line(ctx, pts[i], pts[i + 1]); }
-}
-
-static void footprint_layer_update(Layer *layer, GContext *ctx) {
-  GRect b = layer_get_bounds(layer);
-  graphics_context_set_fill_color(ctx, othertextcol);
-  graphics_fill_circle(ctx, GPoint(b.size.w / 2, b.size.h * 2 / 3), b.size.w / 5);
-  graphics_fill_circle(ctx, GPoint(b.size.w * 2 / 3, b.size.h / 3), b.size.w / 8);
-  graphics_fill_circle(ctx, GPoint(b.size.w * 3 / 7, b.size.h / 5), b.size.w / 10);
-}
-
-static void weather_layer_update(Layer *layer, GContext *ctx) {
-  (void)layer;
-  GColor c = othertextcol;
-  graphics_context_set_stroke_color(ctx, c);
-  graphics_context_set_fill_color(ctx, c);
-  graphics_context_set_stroke_width(ctx, 2);
-  switch (weather_icon_index) {
-    case 0: case 1: /* clear */
-      graphics_draw_circle(ctx, GPoint(17,17), 7);
-      for (int a = 0; a < 8; a++) {
-        static const int8_t dx[8] = {0,7,10,7,0,-7,-10,-7};
-        static const int8_t dy[8] = {-10,-7,0,7,10,7,0,-7};
-        graphics_draw_line(ctx, GPoint(17 + dx[a] * 7 / 10,17 + dy[a] * 7 / 10),
-                                GPoint(17 + dx[a],17 + dy[a]));
-      }
-      break;
-    case 8: case 9: case 10: case 12: /* precipitation/storm */
-      graphics_draw_circle(ctx, GPoint(14,14), 7);
-      graphics_draw_circle(ctx, GPoint(22,16), 8);
-      graphics_fill_rect(ctx, GRect(8,16,22,7), 3, GCornersAll);
-      for (int x = 11; x <= 27; x += 8) { graphics_draw_line(ctx, GPoint(x,26), GPoint(x-2,32)); }
-      break;
-    case 2: /* wind */
-      graphics_draw_line(ctx, GPoint(3,11), GPoint(27,11));
-      graphics_draw_line(ctx, GPoint(8,18), GPoint(32,18));
-      graphics_draw_line(ctx, GPoint(3,25), GPoint(24,25));
-      break;
-    case 14: /* unavailable */
-      graphics_draw_circle(ctx, GPoint(17,17), 14);
-      graphics_draw_line(ctx, GPoint(7,7), GPoint(27,27));
-      break;
-    default: /* clouds/fog/cold */
-      graphics_draw_circle(ctx, GPoint(13,15), 7);
-      graphics_draw_circle(ctx, GPoint(22,16), 9);
-      graphics_fill_rect(ctx, GRect(6,16,25,8), 3, GCornersAll);
-      break;
-  }
-}
-#endif
 
 /* One battery cell. `full` picks solid vs the SHADED (dithered) empty treatment.
  *
@@ -1056,10 +857,6 @@ static void draw_classic_battery_tile(GContext *ctx, GPoint p, bool full, GColor
   /* ink box inside the cell: x/y offset, then width/height */
 #if defined(PBL_PLATFORM_EMERY)
   const int ix = 3, iy = 2, iw = 4, ih = 21;
-#elif defined(PBL_PLATFORM_CHALK)
-  const int ix = 1, iy = 0, iw = 4, ih = 11;
-#elif defined(PBL_PLATFORM_GABBRO)
-  const int ix = 1, iy = 0, iw = 7, ih = 16;
 #else   /* basalt / aplite / diorite / flint - the original 144x168 geometry */
   const int ix = 1, iy = 2, iw = 3, ih = 14;
 #endif
@@ -1182,13 +979,9 @@ void handle_tick( struct tm *tick_time, TimeUnits notused ) {
          is 18x20 around a ~12x14 token - 3px of padding on every side, so it sits 3px
          proud of the glyphs top and bottom. The previous values were noticeably tighter
          (pad 1, height 18) and read as a snug label rather than an LCARS block.
-         Larger screens scale that: emery x1.389, gabbro x1.806. */
+         Emery scales that by x1.389. */
 #if defined(PBL_PLATFORM_EMERY)
       const int hl_pad = 4, hl_h = 28, hl_yoff = -1;
-#elif defined(PBL_PLATFORM_GABBRO)
-      const int hl_pad = 5, hl_h = 36, hl_yoff = -1;
-#elif defined(PBL_PLATFORM_CHALK)
-      const int hl_pad = 3, hl_h = 24, hl_yoff = -1;
 #else
       const int hl_pad = 3, hl_h = 20, hl_yoff = -1;
 #endif
@@ -1293,12 +1086,7 @@ void handle_tick( struct tm *tick_time, TimeUnits notused ) {
           temperature_text[0] = '\0';
           if (temp_layer) { text_layer_set_text(temp_layer, temperature_text); }
 
-#if defined(PBL_PLATFORM_GABBRO)
-          weather_icon_index = 14;
-          if (icon_layer) { layer_mark_dirty(bitmap_layer_get_layer(icon_layer)); }
-#elif !defined(PBL_PLATFORM_CHALK)
           replace_weather_icon(RESOURCE_ID_NA);
-#endif
       }
   }
 }
@@ -1382,12 +1170,9 @@ static void tuple_changed_callback( const uint32_t key, const Tuple* tuple_new, 
 
       persist_write_int( BACKGROUND_KEY, value );
       current_background = value;
-#ifndef PARAMETRIC_LCARS
-      if ( current_background > BGND_BORG ) { current_background = BGND_BLUE; }  // bitmap path (chalk) has no Custom
-#endif
 #ifdef PBL_COLOR
       bgcol();
-#elif defined(PARAMETRIC_LCARS)
+#else
       if (frame_layer) { layer_mark_dirty(frame_layer); }
 #endif
       break;
@@ -1415,9 +1200,7 @@ static void tuple_changed_callback( const uint32_t key, const Tuple* tuple_new, 
       apply_custom_colors();
       if (battery_layer) { layer_mark_dirty(battery_layer); }
       if (qt_layer) { layer_mark_dirty(qt_layer); }
-#ifdef PARAMETRIC_LCARS
       if (bluetooth_layer) { layer_mark_dirty(bluetooth_layer); }
-#endif
       if (popup_layer) { layer_mark_dirty(popup_layer); }
       break;
 
@@ -1429,14 +1212,8 @@ static void tuple_changed_callback( const uint32_t key, const Tuple* tuple_new, 
       break;
 
     case SETTING_ICON_KEY:
-#if defined(PBL_PLATFORM_GABBRO)
-      VALIDATE_MAXIMUM("SETTING_ICON_KEY", uint_value, 14)
-      weather_icon_index = value;
-      if (icon_layer) { layer_mark_dirty(bitmap_layer_get_layer(icon_layer)); }
-#elif !defined(PBL_PLATFORM_CHALK)
       VALIDATE_MAXIMUM("SETTING_ICON_KEY", uint_value, ARRAY_LENGTH(WEATHER_ICONS) - 1)
       replace_weather_icon(WEATHER_ICONS[uint_value]);
-#endif
       break;
 
     case SETTING_TEMPERATURE_KEY:
@@ -1532,17 +1309,9 @@ static void tuple_changed_callback( const uint32_t key, const Tuple* tuple_new, 
 
       if (battery_text_layer) { text_layer_set_background_color(battery_text_layer, backgroundcol); }
       update_secs_ampm_layer_background();
-#ifdef PARAMETRIC_LCARS
       if (bluetooth_layer) { layer_mark_dirty(bluetooth_layer); }
-#else
-      if (bluetooth_layer) { bitmap_layer_set_background_color(bluetooth_layer, backgroundcol); }
-#endif
 #ifdef PBL_HEALTH
-#ifndef PBL_PLATFORM_GABBRO
       if (footprint_layer) { bitmap_layer_set_background_color(footprint_layer, backgroundcol); }
-#else
-      if (footprint_layer) { layer_mark_dirty(footprint_layer); }
-#endif
 #endif
       if (battery_layer) { layer_mark_dirty(battery_layer); }
 #ifdef HAS_HRM
@@ -1609,11 +1378,6 @@ static void tuple_changed_callback( const uint32_t key, const Tuple* tuple_new, 
       text_layer_set_text_color(battery_text_layer, othertextcol);
 #ifdef HAS_HRM
       if (bpm_layer) { text_layer_set_text_color(bpm_layer, othertextcol); }
-#endif
-#ifdef PBL_PLATFORM_GABBRO
-      if (charging_layer) { layer_mark_dirty(charging_layer); }
-      if (footprint_layer) { layer_mark_dirty(footprint_layer); }
-      if (icon_layer) { layer_mark_dirty(bitmap_layer_get_layer(icon_layer)); }
 #endif
       }
       break;
@@ -1932,12 +1696,6 @@ void handle_init( void ) {
     current_background = BGND_BLUE;
     persist_write_int(BACKGROUND_KEY, current_background);
   }
-#ifndef PARAMETRIC_LCARS
-  if ( current_background > BGND_BORG ) {
-    current_background = BGND_BLUE;
-    persist_write_int(BACKGROUND_KEY, current_background);
-  }  // bitmap pipeline (chalk) has no Custom scheme
-#endif
   if (battery_background > BATTBG_END) {
     battery_background = BATTBG_BLACK;
     persist_write_int(BATTERY_BACKGROUND_KEY, battery_background);
@@ -2001,7 +1759,7 @@ void handle_init( void ) {
 
   // Load fonts
 
-#if defined(PBL_PLATFORM_EMERY) || defined(PBL_PLATFORM_GABBRO)
+#if defined(PBL_PLATFORM_EMERY)
   // emery (200x228) uses fonts scaled up ~1.35x from basalt to match the larger
   // canvas (the Trekv5 reference renders these enlarged sizes).
   font_days   = fonts_load_custom_font( resource_get_handle( RESOURCE_ID_FONT_ANTONIO_21 ) );
@@ -2015,31 +1773,16 @@ void handle_init( void ) {
   font_date   = fonts_load_custom_font( resource_get_handle( RESOURCE_ID_FONT_ANTONIO_17 ) );  // test width-match: emery ANTONIO_24 * 144/200 = 17.3 (was 18 height-match, rendered wide -> date/week letters spread right of emery)
   small_batt  = fonts_load_custom_font( resource_get_handle( RESOURCE_ID_FONT_LCARSB_19 ) );
   small_batt2 = fonts_load_custom_font( resource_get_handle( RESOURCE_ID_FONT_LCARS_18  ) );
-#ifdef PBL_PLATFORM_CHALK
-  font_time   = fonts_load_custom_font( resource_get_handle( RESOURCE_ID_FONT_LCARS_64 ) );
-#else
   font_time   = fonts_load_custom_font( resource_get_handle( RESOURCE_ID_FONT_LCARS_68  ) );  // optimal: tested 66/67/68 - 66 +84 RED (height), 67 +11 (green), 68 best. The clock's 51px width-fringe is the floor at 144px height-match
-#endif
 #endif
 
   // Background LCARS frame
 
-#ifdef PARAMETRIC_LCARS
   frame_layer = layer_create( layer_get_bounds( window_layer ) );
   if (frame_layer) {
     layer_set_update_proc(frame_layer, frame_layer_update);
     layer_add_child(window_layer, frame_layer);
   }
-#else
-  background_image = gbitmap_create_with_resource(
-          background_images_array[current_background]);
-  background_layer = bitmap_layer_create( layer_get_bounds( window_layer ) );
-  if (background_layer) {
-    bitmap_layer_set_bitmap(background_layer, background_image);
-    bitmap_layer_set_compositing_mode(background_layer, GCompOpSet);
-    layer_add_child(window_layer, bitmap_layer_get_layer(background_layer));
-  }
-#endif
 
   // Setup battery layer
 	
@@ -2049,13 +1792,6 @@ void handle_init( void ) {
     layer_add_child(window_layer, battery_layer);
   }
 
-#ifdef PBL_PLATFORM_GABBRO
-  charging_layer = layer_create(CHARGING_RECT);
-  if (charging_layer) {
-    layer_set_update_proc(charging_layer, charging_layer_update);
-    layer_add_child(window_layer, charging_layer);
-  }
-#elif !defined(PBL_PLATFORM_CHALK)
   battery_charging = gbitmap_create_with_resource( RESOURCE_ID_IMAGE_CHARGING );
   
   charging_layer = bitmap_layer_create( CHARGING_RECT );
@@ -2064,24 +1800,14 @@ void handle_init( void ) {
     bitmap_layer_set_compositing_mode(charging_layer, GCompOpSet);
     layer_add_child(window_layer, bitmap_layer_get_layer(charging_layer));
   }
-#endif
 
   // Setup bluetooth layer
 
-#ifdef PARAMETRIC_LCARS
   bluetooth_layer = layer_create( BT_RECT );
   if (bluetooth_layer) {
     layer_set_update_proc(bluetooth_layer, bluetooth_layer_update);
     layer_add_child(window_layer, bluetooth_layer);
   }
-#else
-  bluetooth_layer = bitmap_layer_create( BT_RECT );
-  if (bluetooth_layer) {
-    bitmap_layer_set_compositing_mode(bluetooth_layer, GCompOpSet);
-    bitmap_layer_set_background_color(bluetooth_layer, backgroundcol);
-    layer_add_child(window_layer, bitmap_layer_get_layer(bluetooth_layer));
-  }
-#endif
 
   // Setup time layer
 	
@@ -2104,20 +1830,13 @@ void handle_init( void ) {
 
   // set up battery text layer
 
-#ifdef PBL_PLATFORM_CHALK
-  battery_text_layer = text_layer_create(GRect(49, 77, 22, 20));
-#elif defined(PBL_PLATFORM_EMERY)
+#if defined(PBL_PLATFORM_EMERY)
   battery_text_layer = text_layer_create(GRect(64, 101, 35, 41));
-#elif defined(PBL_PLATFORM_GABBRO)
-  battery_text_layer = text_layer_create(GRect(66, 114, 35, 36));
 #else
   battery_text_layer = text_layer_create(GRect(46, 76, 25, 30));  // left edge x37->46 so the opaque bg stops eating the frame's temp block (matches emery's scaled extent x64-99); right edge stays x71 -> "80" unmoved
 #endif
   if (battery_text_layer) {
-#ifdef PBL_PLATFORM_CHALK
-    text_layer_set_font(battery_text_layer, small_batt2);
-    text_layer_set_text_alignment(battery_text_layer, GTextAlignmentLeft);
-#elif defined(PBL_PLATFORM_EMERY) || defined(PBL_PLATFORM_GABBRO)
+#if defined(PBL_PLATFORM_EMERY)
     text_layer_set_font(battery_text_layer, batt_font);
     text_layer_set_text_alignment(battery_text_layer, GTextAlignmentRight);
 #else
@@ -2152,42 +1871,19 @@ void handle_init( void ) {
 
   // Setup date layer
 
-#ifdef PBL_PLATFORM_CHALK
-  text_date_layer = setup_text_layer( DATE_RECT
-                                    , GTextAlignmentCenter
-                                    , small_batt );
-#else
  text_date_layer = setup_text_layer( DATE_RECT
                                    , GTextAlignmentLeft
-#ifdef PBL_PLATFORM_GABBRO
-                                   , font_days );
-#else
                                    , font_date );
-#endif
-#endif
   if (text_date_layer) {
     text_layer_set_text_color(text_date_layer, textcol);
-#ifdef PBL_PLATFORM_CHALK
-    text_layer_set_background_color(text_date_layer, GColorClear);
-#endif
     layer_add_child(window_layer, text_layer_get_layer(text_date_layer));
   }
 
   // Setup week layer
 
-#ifdef PBL_PLATFORM_CHALK
-  text_week_layer = setup_text_layer( WEEK_RECT
-                                    , GTextAlignmentLeft
-                                    , font_date );
-#else
  text_week_layer = setup_text_layer( WEEK_RECT
                                    , GTextAlignmentRight
-#ifdef PBL_PLATFORM_GABBRO
-                                   , font_days );
-#else
                                    , font_date );
-#endif
-#endif
   if (text_week_layer) {
     text_layer_set_text_color(text_week_layer, othertextcol);
     layer_add_child(window_layer, text_layer_get_layer(text_week_layer));
@@ -2197,11 +1893,7 @@ void handle_init( void ) {
 
   icon_layer = bitmap_layer_create( !hideweather ? ICON_RECT : EMPTY_RECT );
   if (icon_layer) {
-#ifdef PBL_PLATFORM_GABBRO
-    layer_set_update_proc(bitmap_layer_get_layer(icon_layer), weather_layer_update);
-#else
     bitmap_layer_set_compositing_mode(icon_layer, GCompOpSet);
-#endif
     layer_add_child(window_layer, bitmap_layer_get_layer(icon_layer));
   }
 
@@ -2223,19 +1915,9 @@ void handle_init( void ) {
 #ifdef PBL_HEALTH
 
   // setup health layers
-#ifdef PBL_PLATFORM_GABBRO
-  GRect footprintframe = GRect(181, 202, 24, 26);
-  footprint_layer = layer_create(footprintframe);
-  if (footprint_layer) {
-    layer_set_update_proc(footprint_layer, footprint_layer_update);
-    layer_add_child(window_layer, footprint_layer);
-  }
-#else
   footprint_icon = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_FOOTPRINT);
   GRect footprintbounds = footprint_icon ? gbitmap_get_bounds(footprint_icon) : GRectZero;
-#ifdef PBL_PLATFORM_CHALK
-  GRect footprintframe = GRect(57, 159, footprintbounds.size.w, footprintbounds.size.h);
-#elif defined(PBL_PLATFORM_EMERY)
+#if defined(PBL_PLATFORM_EMERY)
   GRect footprintframe = GRect(170, 184, footprintbounds.size.w, footprintbounds.size.h);
 #else
   GRect footprintframe = GRect(122, 135, footprintbounds.size.w, footprintbounds.size.h);
@@ -2247,39 +1929,22 @@ void handle_init( void ) {
     bitmap_layer_set_background_color(footprint_layer, backgroundcol);
     layer_add_child(window_layer, bitmap_layer_get_layer(footprint_layer));
   }
-#endif
 
 
-#if defined(PBL_PLATFORM_GABBRO)
-  steps_label = text_layer_create(GRect(105, 201, 72, 27));
-#elif defined(PBL_PLATFORM_EMERY)
+#if defined(PBL_PLATFORM_EMERY)
   steps_label = text_layer_create(GRect(  94, 186, 74,  35 ));
 #else
-  steps_label = text_layer_create(PBL_IF_ROUND_ELSE(
-    GRect(  71, 154, 90,  20 ),
-    GRect(  68, 137, 55,  26 )));
+  steps_label = text_layer_create(GRect(  68, 137, 55,  26 ));
 #endif
   if (steps_label) {
     text_layer_set_text_color(steps_label, othertextcol);
     text_layer_set_background_color(steps_label, GColorClear);
-#ifdef PBL_PLATFORM_CHALK
-  text_layer_set_text_alignment(steps_label, GTextAlignmentLeft);
-  text_layer_set_font(steps_label, small_batt2);
-#elif defined(PBL_PLATFORM_GABBRO)
-  text_layer_set_text_alignment(steps_label, GTextAlignmentRight);
-  text_layer_set_font(steps_label, font_days);
-#else
   text_layer_set_text_alignment(steps_label, GTextAlignmentRight);
   text_layer_set_font(steps_label, font_date);
-#endif
     layer_add_child(window_layer, text_layer_get_layer(steps_label));
     layer_set_hidden(text_layer_get_layer(steps_label), true);
   }
-#ifdef PBL_PLATFORM_GABBRO
-  if (footprint_layer) { layer_set_hidden(footprint_layer, true); }
-#else
   if (footprint_layer) { layer_set_hidden(bitmap_layer_get_layer(footprint_layer), true); }
-#endif
 
 #endif
 
@@ -2288,7 +1953,7 @@ void handle_init( void ) {
   // old spot (the date moves into the bracket); on diorite (Pebble 2 HR) it sits in
   // the bottom-left where the date would otherwise be.
   heart_bitmap = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_HEART);
-#if defined(PBL_PLATFORM_EMERY) || defined(PBL_PLATFORM_GABBRO)
+#if defined(PBL_PLATFORM_EMERY)
   heart_layer  = bitmap_layer_create(GRect(19, 191, 20, 18));
   bpm_layer    = setup_text_layer(GRect(44, 186, 72, 30), GTextAlignmentLeft, font_date);
 #else  // diorite (144x168)
@@ -2339,7 +2004,7 @@ void handle_init( void ) {
   // Bluetooth-disconnect popup overlay (all platforms; drawn programmatically, hidden until needed).
   {
     // Classic LCARS dialog fonts (per-platform sizes; condensed LCARS face).
-#if defined(PBL_PLATFORM_EMERY) || defined(PBL_PLATFORM_GABBRO)
+#if defined(PBL_PLATFORM_EMERY)
     popup_font      = fonts_load_custom_font(resource_get_handle(RESOURCE_ID_FONT_LCARSA_30));
     popup_hint_font = fonts_load_custom_font(resource_get_handle(RESOURCE_ID_FONT_LCARSP_18));
     popup_time_font = fonts_load_custom_font(resource_get_handle(RESOURCE_ID_FONT_LCARS_14));
@@ -2349,16 +2014,8 @@ void handle_init( void ) {
     popup_time_font = fonts_load_custom_font(resource_get_handle(RESOURCE_ID_FONT_LCARS_12));
 #endif
     GRect _wb = layer_get_bounds(window_layer);
-#ifdef PARAMETRIC_LCARS
     // Panel sized to the parametric pill-bar frame geometry, centred on screen.
     GSize _fs = frame_popup_panel_size();
-#else
-    // Size the popup to the rendered LCARS frame bitmap (chalk PNG, authentic
-    // pill-bar borders) and centre it on screen.
-    popup_frame_bitmap = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_BT_POPUP);
-    GSize _fs = popup_frame_bitmap ? gbitmap_get_bounds(popup_frame_bitmap).size
-                                   : GSize((_wb.size.w * 78) / 100, (_wb.size.h * 54) / 100);
-#endif
     popup_layer = layer_create(GRect((_wb.size.w - _fs.w) / 2, (_wb.size.h - _fs.h) / 2, _fs.w, _fs.h));
     if (popup_layer) {
       layer_set_update_proc(popup_layer, popup_update_proc);
@@ -2430,24 +2087,15 @@ void handle_deinit( void ) {
   }
 
   // Destroy image objects
-#ifdef PARAMETRIC_LCARS
   if (frame_layer) { layer_destroy(frame_layer); }
   if (bluetooth_layer) { layer_destroy(bluetooth_layer); }
-#else
-  destroy_graphics( background_image, background_layer );
-  destroy_graphics( bluetooth_image, bluetooth_layer );
-#endif
   destroy_graphics( icon_bitmap, icon_layer );
 
   // Battery layer images
   if (battery_layer) { layer_destroy(battery_layer); }
 
-#ifdef PBL_PLATFORM_GABBRO
-  if (charging_layer) { layer_destroy(charging_layer); }
-#elif !defined(PBL_PLATFORM_CHALK)
   if (battery_charging) { gbitmap_destroy(battery_charging); }
   if (charging_layer) { bitmap_layer_destroy(charging_layer); }
-#endif
 
   // Destroy text objects
 #ifdef HAS_HRM
@@ -2462,9 +2110,6 @@ void handle_deinit( void ) {
   if (bt_accel_on)       { accel_data_service_unsubscribe(); }
   vibes_cancel();
   if (popup_layer)       { layer_destroy(popup_layer); }
-#ifndef PARAMETRIC_LCARS
-  if (popup_frame_bitmap){ gbitmap_destroy(popup_frame_bitmap); }
-#endif
   if (popup_font)      { fonts_unload_custom_font(popup_font); }
   if (popup_hint_font) { fonts_unload_custom_font(popup_hint_font); }
   if (popup_time_font) { fonts_unload_custom_font(popup_time_font); }
@@ -2480,11 +2125,7 @@ void handle_deinit( void ) {
 #ifdef PBL_HEALTH
   stop_health_services();
   if (steps_label) { text_layer_destroy(steps_label); }
-#ifdef PBL_PLATFORM_GABBRO
-  if (footprint_layer) { layer_destroy(footprint_layer); }
-#else
   destroy_graphics( footprint_icon, footprint_layer );
-#endif
 #endif
 
   // other layers
@@ -2499,7 +2140,7 @@ void handle_deinit( void ) {
   if (font_days) { fonts_unload_custom_font(font_days); }
   if (font_date) { fonts_unload_custom_font(font_date); }
   if (small_batt) { fonts_unload_custom_font(small_batt); }
-#if defined(PBL_PLATFORM_EMERY) || defined(PBL_PLATFORM_GABBRO)
+#if defined(PBL_PLATFORM_EMERY)
   if (batt_font) { fonts_unload_custom_font(batt_font); }
 #endif
   if (small_batt2) { fonts_unload_custom_font(small_batt2); }
