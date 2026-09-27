@@ -26,4 +26,6 @@ GSize frame_popup_panel_size(void);
 /* Draw the bluetooth rune (connected) or the no-BT glyph, centred in box,
    in the given colour. Exact pixels of the original art (code tables). */
 void frame_draw_bt_glyph(GContext *ctx, GRect box, bool connected, GColor color);
-void frame_draw_qt_glyph(GContext *ctx, GRect box, GColor color);
+/* Draw the Quiet Time "QT" glyph centred in the layer. Pixels that would match their
+   backdrop are knocked out to black or white so the indicator is always visible. */
+void frame_draw_qt_glyph(GContext *ctx, Layer *layer, GColor color);

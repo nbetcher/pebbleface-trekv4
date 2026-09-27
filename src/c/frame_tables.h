@@ -117,18 +117,16 @@ static const PopupBar POPUP_BARS_144[6] = {
 // IMAGE_BLUETOOTH (14x17 1:1 art, Extracted/<plat>/resources - not the upscaled copies),
 // cropped to its 8x15 ink box: two 1px 45-degree polylines plus a staff dotted on the even
 // rows. The black pixels of the original are a drop shadow onto the (black) notch and are
-// therefore not ink. Time 2 / Round 2 re-draw that SAME construction at 10/7 and 11/7 (the largest that fits Round 2's
-// 24px-tall layer) so
-// the strokes stay 1px and the staff stays dotted, instead of up-scaling the pixels.
+// therefore not ink. Time 2 uses its own original art instead: the 11x19 IMAGE_BLUETOOTH
+// (bluetooth-bw~emery.png) that 5.x shipped, 2px strokes and a solid staff. A 1px
+// redraw of the 144 rune looked too thin at that size. Round 2 had no art of its own
+// and shares the Time 2 glyphs (both fit its 32x24 notch).
 static const uint32_t GLYPH_RUNE_144_ROWS[15] = { 0x0008, 0x0010, 0x0028, 0x0041, 0x008A, 0x0044, 0x0028, 0x0010, 0x0028, 0x0044, 0x008A, 0x0041, 0x0028, 0x0010, 0x0008 };
 #define GLYPH_RUNE_144_W 8
 #define GLYPH_RUNE_144_H 15
-static const uint32_t GLYPH_RUNE_EM_ROWS[21] = { 0x0010, 0x0020, 0x0050, 0x0080, 0x0111, 0x0202, 0x0414, 0x0208, 0x0110, 0x00A0, 0x0050, 0x00A0, 0x0110, 0x0208, 0x0414, 0x0202, 0x0111, 0x0080, 0x0050, 0x0020, 0x0010 };
+static const uint32_t GLYPH_RUNE_EM_ROWS[19] = { 0x0020, 0x0060, 0x00E0, 0x01A0, 0x0323, 0x0326, 0x012C, 0x01F8, 0x0070, 0x0070, 0x00F0, 0x01F8, 0x0324, 0x0626, 0x0323, 0x01A0, 0x00E0, 0x0060, 0x0020 };
 #define GLYPH_RUNE_EM_W 11
-#define GLYPH_RUNE_EM_H 21
-static const uint32_t GLYPH_RUNE_RD_ROWS[23] = { 0x0020, 0x0040, 0x00A0, 0x0100, 0x0220, 0x0401, 0x0822, 0x0404, 0x0228, 0x0110, 0x00A0, 0x0040, 0x00A0, 0x0110, 0x0228, 0x0404, 0x0822, 0x0401, 0x0220, 0x0100, 0x00A0, 0x0040, 0x0020 };
-#define GLYPH_RUNE_RD_W 12
-#define GLYPH_RUNE_RD_H 23
+#define GLYPH_RUNE_EM_H 19
 static const uint32_t GLYPH_NOBT_EM_ROWS[23] = { 0x0000, 0x0000, 0x0000, 0x0000, 0x8010, 0xC030, 0x6060, 0x30C0, 0x1980, 0x0F00, 0x0600, 0x0E00, 0x1900, 0x1080, 0x2040, 0x4020, 0xC010, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000 };
 #define GLYPH_NOBT_EM_W 20
 #define GLYPH_NOBT_EM_H 23
@@ -155,20 +153,13 @@ static const uint32_t GLYPH_QT_EM_ROWS[21] = { 0xFF8FE, 0xFF9FF, 0xFF9FF, 0x1C1C
 #define GLYPH_QT_W GLYPH_QT_144_W
 #define GLYPH_QT_H GLYPH_QT_144_H
 #endif
-#if defined(PBL_PLATFORM_EMERY)
+#if defined(PBL_PLATFORM_EMERY) || defined(PBL_PLATFORM_GABBRO)
 #define GLYPH_RUNE_ROWS GLYPH_RUNE_EM_ROWS
 #define GLYPH_RUNE_W GLYPH_RUNE_EM_W
 #define GLYPH_RUNE_H GLYPH_RUNE_EM_H
 #define GLYPH_NOBT_ROWS GLYPH_NOBT_EM_ROWS
 #define GLYPH_NOBT_W GLYPH_NOBT_EM_W
 #define GLYPH_NOBT_H GLYPH_NOBT_EM_H
-#elif defined(PBL_PLATFORM_GABBRO)
-#define GLYPH_RUNE_ROWS GLYPH_RUNE_RD_ROWS
-#define GLYPH_RUNE_W GLYPH_RUNE_RD_W
-#define GLYPH_RUNE_H GLYPH_RUNE_RD_H
-#define GLYPH_NOBT_ROWS GLYPH_NOBT_144_ROWS
-#define GLYPH_NOBT_W GLYPH_NOBT_144_W
-#define GLYPH_NOBT_H GLYPH_NOBT_144_H
 #else
 #define GLYPH_RUNE_ROWS GLYPH_RUNE_144_ROWS
 #define GLYPH_RUNE_W GLYPH_RUNE_144_W

@@ -144,6 +144,45 @@ function effect_invert(ctx, position, param) {
   apply_invert(ctx, position, false, GColorBlackARGB8);
 }
 
+/* PORT OF src/c/effects.c:argb_distance - squared distance in 2-bit channel steps. */
+function argb_distance(a, b) {
+  var dr = ((a >> 4) & 3) - ((b >> 4) & 3);
+  var dg = ((a >> 2) & 3) - ((b >> 2) & 3);
+  var db = (a & 3) - (b & 3);
+  return dr * dr + dg * dg + db * db;
+}
+
+/* PORT OF src/c/effects.c:apply_hard_invert - the today marker. Every pixel snaps to
+ * whichever of {ink, bg} it is further from: the block fills in the day-strip colour
+ * and the glyphs knock out to the screen background. A plain complement (effect_invert)
+ * turned a grey strip into grey-on-white instead. Capture path, like apply_invert. */
+function apply_hard_invert(ctx, position, ink, bg) {
+  var info = {};
+  var min_x, min_y, max_x, max_y, x, y, pixel, is_glyph;
+  if (!capture_bitmap(ctx, info)) {
+    if (info.framebuffer) { graphics_release_frame_buffer(ctx, info.framebuffer); }
+    return;
+  }
+  min_x = position.origin.x;
+  min_y = position.origin.y;
+  max_x = min_x + position.size.w;
+  max_y = min_y + position.size.h;
+  for (y = min_y; y < max_y; y++) {
+    for (x = min_x; x < max_x; x++) {
+      if (!pixel_is_valid(info, x, y)) { continue; }
+      pixel = get_pixel(info, x, y);
+      is_glyph = argb_distance(pixel, ink) <= argb_distance(pixel, bg);
+      set_pixel(info, x, y, is_glyph ? bg : ink);
+    }
+  }
+  graphics_release_frame_buffer(ctx, info.framebuffer);
+}
+
+/* PORT OF src/c/effects.c:effect_hard_invert - param packs (ink << 8) | bg. */
+function effect_hard_invert(ctx, position, param) {
+  apply_hard_invert(ctx, position, (param >> 8) & 0xFF, param & 0xFF);
+}
+
 /* PORT OF src/c/effect_layer.c:effect_layer_update_proc
  *
  * layer_get_bounds() gives (0,0,w,h); layer_convert_point_to_screen() lifts the
@@ -236,6 +275,9 @@ if (typeof module !== 'undefined' && module.exports) {
     capture_bitmap: capture_bitmap,
     apply_invert: apply_invert,
     effect_invert: effect_invert,
+    argb_distance: argb_distance,
+    apply_hard_invert: apply_hard_invert,
+    effect_hard_invert: effect_hard_invert,
     effects_apply_invert: effects_apply_invert,
     effect_layer_update_proc: effect_layer_update_proc,
     effect_layer_create: effect_layer_create,

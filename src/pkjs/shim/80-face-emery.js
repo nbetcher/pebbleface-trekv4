@@ -71,7 +71,7 @@ var bitmap_layer_set_background_color, bitmap_layer_set_compositing_mode;
 var window_create, window_get_root_layer, window_set_background_color, window_stack_push;
 var gbitmap_create_with_resource;
 var effect_layer_create, effect_layer_get_layer, effect_layer_set_frame;
-var effect_layer_add_effect, effect_layer_destroy, effect_invert;
+var effect_layer_add_effect, effect_layer_destroy, effect_invert, effect_hard_invert;
 if (typeof module !== 'undefined' && module.exports) {
   var _m = { c: null, g: null, p: null, f: null, x: null, r: null, t: null, l: null, e: null };
   try { _m.c = require('./00-cnum.js'); } catch (m0) { /* not landed yet */ }
@@ -148,6 +148,7 @@ if (typeof module !== 'undefined' && module.exports) {
   effect_layer_add_effect = _m.e.effect_layer_add_effect;
   effect_layer_destroy = _m.e.effect_layer_destroy;
   effect_invert = _m.e.effect_invert;
+  effect_hard_invert = _m.e.effect_hard_invert;
 }
 /* @endnoinline */
 
@@ -269,14 +270,13 @@ function frame_popup_panel_size() {
   return GSize(p[0], p[1]);
 }
 
-/* frame_tables.h:GLYPH_RUNE_EM_ROWS - the original IMAGE_BLUETOOTH construction (two
-   1px 45-degree polylines + a staff dotted on the even rows) redrawn at 10/7 for emery.
-   Bit x of row y = ink. See frame_tables.h for the derivation. */
+/* frame_tables.h:GLYPH_RUNE_EM_ROWS - the Time 2 IMAGE_BLUETOOTH art 5.x shipped
+   (bluetooth-bw~emery.png, 11x19, 2px strokes). Bit x of row y = ink. */
 var BT_RUNE_W = 11;
-var BT_RUNE_H = 21;
+var BT_RUNE_H = 19;
 var BT_RUNE_ROWS = [
-  0x0010, 0x0020, 0x0050, 0x0080, 0x0111, 0x0202, 0x0414, 0x0208, 0x0110, 0x00A0, 0x0050,
-  0x00A0, 0x0110, 0x0208, 0x0414, 0x0202, 0x0111, 0x0080, 0x0050, 0x0020, 0x0010
+  0x0020, 0x0060, 0x00E0, 0x01A0, 0x0323, 0x0326, 0x012C, 0x01F8, 0x0070, 0x0070,
+  0x00F0, 0x01F8, 0x0324, 0x0626, 0x0323, 0x01A0, 0x00E0, 0x0060, 0x0020
 ];
 
 /* PORT OF src/c/frame_render.c:draw_glyph_rows - hard 1px run-length spans drawn with
@@ -854,10 +854,12 @@ function faceBuild(S) {
   text_layer_set_text(S.text_days_layer, S.days_buf);
   layer_add_child(window_layer, text_layer_get_layer(S.text_days_layer));
 
-  /* 9. Today highlight (full-colour inversion, so a coloured day glyph stays
-        contrasted against the highlighted background). Frame is set by faceTick. */
+  /* 9. Today highlight - main.c's saturating effect_hard_invert between the strip
+        colour and the screen background (today_highlight_param). Frame is set by
+        faceTick. */
   S.effect_layer2 = effect_layer_create(EMPTY_RECT());
-  effect_layer_add_effect(S.effect_layer2, effect_invert, null);
+  effect_layer_add_effect(S.effect_layer2, effect_hard_invert,
+      ((S.othertextcol & 0xFF) << 8) | (S.backgroundcol & 0xFF));
   layer_add_child(window_layer, effect_layer_get_layer(S.effect_layer2));
 
   /* 10. Month-day date. */

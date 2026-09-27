@@ -130,6 +130,7 @@ jobs:
       - name: Check and test
         run: |
           npm run check
+          python3 make_shim.py --check
           npm test
 
       - name: Build PBW

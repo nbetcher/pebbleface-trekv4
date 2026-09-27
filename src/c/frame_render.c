@@ -248,7 +248,62 @@ void frame_draw_bt_glyph(GContext *ctx, GRect box, bool connected, GColor color)
   }
 }
 
-/* Quiet Time "QT" indicator (original IMAGE_ICON_QT art, see frame_tables.h). */
-void frame_draw_qt_glyph(GContext *ctx, GRect box, GColor color) {
-  draw_glyph_rows(ctx, box, GLYPH_QT_ROWS, GLYPH_QT_W, GLYPH_QT_H, color);
+#ifdef PBL_COLOR
+/* Squared distance between two ARGB8 colours in 2-bit channel steps (0..27). */
+static int argb_dist2(uint8_t a, uint8_t b) {
+  int dr = (int)((a >> 4) & 3) - (int)((b >> 4) & 3);
+  int dg = (int)((a >> 2) & 3) - (int)((b >> 2) & 3);
+  int db = (int)(a & 3) - (int)(b & 3);
+  return dr * dr + dg * dg + db * db;
+}
+#endif
+
+/* Quiet Time "QT" indicator (original IMAGE_ICON_QT art, see frame_tables.h).
+
+   The glyph sits on top of whatever is under QT_RECT - an LCARS bar on most layouts -
+   so a fixed ink colour can vanish: white QT on the white monochrome frame was invisible
+   on aplite/diorite/flint. Each ink pixel is therefore written straight into the
+   framebuffer, and any pixel whose backdrop is too close to the ink flips to black or
+   white, whichever is further from that backdrop. Over a contrasting backdrop (the
+   default colour themes) the glyph is drawn exactly in `color`. */
+#define QT_MIN_CONTRAST 4   /* below this dist2 the ink reads as the backdrop */
+void frame_draw_qt_glyph(GContext *ctx, Layer *layer, GColor color) {
+  GRect box = layer_get_bounds(layer);
+  GPoint org = layer_convert_point_to_screen(layer, GPointZero);
+  GBitmap *fb = graphics_capture_frame_buffer(ctx);
+  if (!fb) {                       /* degraded fallback: plain ink */
+    draw_glyph_rows(ctx, box, GLYPH_QT_ROWS, GLYPH_QT_W, GLYPH_QT_H, color);
+    return;
+  }
+  GRect fbb = gbitmap_get_bounds(fb);
+  int ox = org.x + box.origin.x + (box.size.w - GLYPH_QT_W) / 2;
+  int oy = org.y + box.origin.y + (box.size.h - GLYPH_QT_H) / 2;
+  for (int y = 0; y < GLYPH_QT_H; y++) {
+    int sy = oy + y;
+    if (sy < 0 || sy >= fbb.size.h) { continue; }
+    GBitmapDataRowInfo ri = gbitmap_get_data_row_info(fb, sy);
+    for (int x = 0; x < GLYPH_QT_W; x++) {
+      if (!(GLYPH_QT_ROWS[y] & (1u << x))) { continue; }
+      int sx = ox + x;
+      if (sx < ri.min_x || sx > ri.max_x) { continue; }
+#ifdef PBL_COLOR
+      uint8_t under = ri.data[sx];
+      uint8_t ink = color.argb;
+      if (argb_dist2(ink, under) < QT_MIN_CONTRAST) {
+        ink = argb_dist2(GColorBlackARGB8, under) >= argb_dist2(GColorWhiteARGB8, under)
+            ? GColorBlackARGB8 : GColorWhiteARGB8;
+      }
+      ri.data[sx] = ink;
+#else
+      /* 1-bit: ink is white unless the colour is black; knock out to the opposite of
+         the backdrop whenever the ink would match it. */
+      bool under_white = (ri.data[sx / 8] >> (sx % 8)) & 1;
+      bool ink_white = (color.argb & 0x3F) != 0;
+      if (ink_white == under_white) { ink_white = !under_white; }
+      if (ink_white) { ri.data[sx / 8] |=  (1 << (sx % 8)); }
+      else           { ri.data[sx / 8] &= ~(1 << (sx % 8)); }
+#endif
+    }
+  }
+  graphics_release_frame_buffer(ctx, fb);
 }

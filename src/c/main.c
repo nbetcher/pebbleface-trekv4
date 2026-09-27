@@ -454,12 +454,17 @@ static void bluetooth_layer_update( Layer *layer, GContext *ctx ) {
 /* Quiet Time indicator: shown only while the watch's Quiet Time is on, as the original
    Trekv5 did. The firmware has no Quiet Time event, so handle_tick re-polls it. */
 static void qt_layer_update( Layer *layer, GContext *ctx ) {
-  frame_draw_qt_glyph( ctx, layer_get_bounds( layer ),
-                       (GColor){ .argb = draw_palette[DRAW_PALETTE_BT] } );
+  frame_draw_qt_glyph( ctx, layer, (GColor){ .argb = draw_palette[DRAW_PALETTE_BT] } );
 }
 
 static void update_quiet_time_indicator( void ) {
   if (qt_layer) { layer_set_hidden( qt_layer, !quiet_time_is_active() ); }
+}
+
+/* Quiet Time is usually toggled from a menu, which takes focus from the watchface;
+   re-poll as soon as it returns instead of waiting for the next (minute) tick. */
+static void handle_app_focus( bool in_focus ) {
+  if (in_focus) { update_quiet_time_indicator(); }
 }
 
 /* ---- Bluetooth-disconnect alert: vibration patterns + repeat + LCARS popup ---- */
@@ -2209,14 +2214,6 @@ void handle_init( void ) {
     layer_add_child(window_layer, text_layer_get_layer(temp_layer));
   }
 
-  // Quiet Time indicator (above the temperature text, which shares its corner)
-  qt_layer = layer_create( QT_RECT );
-  if (qt_layer) {
-    layer_set_update_proc(qt_layer, qt_layer_update);
-    layer_set_hidden(qt_layer, true);
-    layer_add_child(window_layer, qt_layer);
-  }
-
   if (!text_time_layer || !text_secs_ampm_layer || !battery_text_layer ||
       !text_days_layer || !text_date_layer || !text_week_layer || !temp_layer) {
     APP_LOG(APP_LOG_LEVEL_ERROR, "Insufficient memory for core watchface text layers");
@@ -2330,6 +2327,15 @@ void handle_init( void ) {
   update_health_subscription();
 #endif
 
+  // Quiet Time indicator. Added after every other watchface layer so nothing can paint
+  // over it; only the disconnect popup and the full-screen inversion sit above it.
+  qt_layer = layer_create( QT_RECT );
+  if (qt_layer) {
+    layer_set_update_proc(qt_layer, qt_layer_update);
+    layer_set_hidden(qt_layer, true);
+    layer_add_child(window_layer, qt_layer);
+  }
+
   // Bluetooth-disconnect popup overlay (all platforms; drawn programmatically, hidden until needed).
   {
     // Classic LCARS dialog fonts (per-platform sizes; condensed LCARS face).
@@ -2366,6 +2372,7 @@ void handle_init( void ) {
   tick_timer_service_subscribe( secs_instead_of_ampm ? SECOND_UNIT : MINUTE_UNIT, handle_tick );
   battery_state_service_subscribe(&handle_battery);
   bluetooth_connection_service_subscribe(&handle_bluetooth);
+  app_focus_service_subscribe(handle_app_focus);
   runtime_services_subscribed = true;
 
   // init battery and bluetooth
@@ -2418,6 +2425,7 @@ void handle_deinit( void ) {
     tick_timer_service_unsubscribe();
     battery_state_service_unsubscribe();
     bluetooth_connection_service_unsubscribe();
+    app_focus_service_unsubscribe();
     runtime_services_subscribed = false;
   }
 

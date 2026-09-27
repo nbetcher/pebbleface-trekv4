@@ -188,6 +188,25 @@ test('the baked pack carries every radius the face draws', function () {
   assert.equal(pack20.packFrameCount(h, 'popup'), 6);
 });
 
+test('the today highlight is a hard two-colour inversion, as on the watch', function () {
+  // main.c registers effect_hard_invert(othertextcol, backgroundcol): the block fills
+  // in the strip colour and today's glyphs knock out to the background. A plain
+  // complement turned a grey strip into grey letters on a white block.
+  var env = baseEnv();
+  env.colors.othertextcol = 0xAAAAAA;
+  var r = shim.renderFace(env);
+  var seen = {};
+  var x, y, i;
+  for (y = 134; y < 160; y++) {
+    for (x = 0; x < r.w; x++) {
+      i = (y * r.w + x) * 4;
+      seen[(r.rgba[i] << 16) | (r.rgba[i + 1] << 8) | r.rgba[i + 2]] = true;
+    }
+  }
+  assert.deepEqual(Object.keys(seen).map(Number).sort(function (a, b) { return a - b; }),
+    [0x000000, 0xAAAAAA], 'day strip and highlight use only the strip and background colours');
+});
+
 test('the preview BT rune is the same bitmask the watch draws', function () {
   // The rune is an exact-pixel bitmask in frame_tables.h (from the original
   // IMAGE_BLUETOOTH art); the preview must carry the identical emery rows.

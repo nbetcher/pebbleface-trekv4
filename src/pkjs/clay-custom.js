@@ -1660,6 +1660,36 @@ graphics_release_frame_buffer(ctx, info.framebuffer);
 function effect_invert(ctx, position, param) {
 apply_invert(ctx, position, false, GColorBlackARGB8);
 }
+function argb_distance(a, b) {
+var dr = ((a >> 4) & 3) - ((b >> 4) & 3);
+var dg = ((a >> 2) & 3) - ((b >> 2) & 3);
+var db = (a & 3) - (b & 3);
+return dr * dr + dg * dg + db * db;
+}
+function apply_hard_invert(ctx, position, ink, bg) {
+var info = {};
+var min_x, min_y, max_x, max_y, x, y, pixel, is_glyph;
+if (!capture_bitmap(ctx, info)) {
+if (info.framebuffer) { graphics_release_frame_buffer(ctx, info.framebuffer); }
+return;
+}
+min_x = position.origin.x;
+min_y = position.origin.y;
+max_x = min_x + position.size.w;
+max_y = min_y + position.size.h;
+for (y = min_y; y < max_y; y++) {
+for (x = min_x; x < max_x; x++) {
+if (!pixel_is_valid(info, x, y)) { continue; }
+pixel = get_pixel(info, x, y);
+is_glyph = argb_distance(pixel, ink) <= argb_distance(pixel, bg);
+set_pixel(info, x, y, is_glyph ? bg : ink);
+}
+}
+graphics_release_frame_buffer(ctx, info.framebuffer);
+}
+function effect_hard_invert(ctx, position, param) {
+apply_hard_invert(ctx, position, (param >> 8) & 0xFF, param & 0xFF);
+}
 function effect_layer_update_proc(me, ctx) {
 var effect_layer = layer_get_data(me);
 var b = layer_get_bounds(me);
@@ -1790,10 +1820,10 @@ var p = s_face.pack.layout.POPUP;
 return GSize(p[0], p[1]);
 }
 var BT_RUNE_W = 11;
-var BT_RUNE_H = 21;
+var BT_RUNE_H = 19;
 var BT_RUNE_ROWS = [
-0x0010, 0x0020, 0x0050, 0x0080, 0x0111, 0x0202, 0x0414, 0x0208, 0x0110, 0x00A0, 0x0050,
-0x00A0, 0x0110, 0x0208, 0x0414, 0x0202, 0x0111, 0x0080, 0x0050, 0x0020, 0x0010
+0x0020, 0x0060, 0x00E0, 0x01A0, 0x0323, 0x0326, 0x012C, 0x01F8, 0x0070, 0x0070,
+0x00F0, 0x01F8, 0x0324, 0x0626, 0x0323, 0x01A0, 0x00E0, 0x0060, 0x0020
 ];
 function draw_glyph_rows(ctx, box, rowAt, gw, gh, color) {
 var ox = box.origin.x + cdiv(box.size.w - gw, 2);
@@ -2205,7 +2235,8 @@ S.days_buf = set_days_text(S.strings.day_line_raw || '');
 text_layer_set_text(S.text_days_layer, S.days_buf);
 layer_add_child(window_layer, text_layer_get_layer(S.text_days_layer));
 S.effect_layer2 = effect_layer_create(EMPTY_RECT());
-effect_layer_add_effect(S.effect_layer2, effect_invert, null);
+effect_layer_add_effect(S.effect_layer2, effect_hard_invert,
+((S.othertextcol & 0xFF) << 8) | (S.backgroundcol & 0xFF));
 layer_add_child(window_layer, effect_layer_get_layer(S.effect_layer2));
 S.text_date_layer = setup_text_layer(faceRect(S, 'DATE_RECT'),
 GTextAlignmentLeft, S.font_date);
@@ -2470,23 +2501,6 @@ version: TREK_SHIM_VERSION
     return "#" + (SUNLIGHT_COLORS[key] || key);
   }
 
-  function invertDisplayColor(value) {
-    var match;
-    var number;
-    if (typeof value !== "string") { return "#000000"; }
-    match = /^#([0-9a-f]{6})$/i.exec(value);
-    if (match) {
-      number = parseInt(match[1], 16) ^ 0xFFFFFF;
-      return "#" + ("000000" + number.toString(16)).slice(-6);
-    }
-    match = /^rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/i.exec(value);
-    if (match) {
-      return "rgb(" + (255 - Math.min(255, parseInt(match[1], 10))) + ", " +
-        (255 - Math.min(255, parseInt(match[2], 10))) + ", " +
-        (255 - Math.min(255, parseInt(match[3], 10))) + ")";
-    }
-    return "#000000";
-  }
 
   // Clay's swatch already contains the sunlight-corrected display color. Reusing it
   // keeps the phone preview visually aligned with the standard Pebble picker while
@@ -2644,16 +2658,13 @@ version: TREK_SHIM_VERSION
   }
 
   // Bluetooth rune bitmasks, bit x of row y = ink - the same tables as
-  // src/c/frame_tables.h (GLYPH_RUNE_144/EM/RD_ROWS), which reproduce the original
+  // src/c/frame_tables.h (GLYPH_RUNE_144/EM_ROWS), which reproduce the original
   // IMAGE_BLUETOOTH art. Emitted as 1px runs so the preview matches the watch exactly.
+  // Time 2 and Round 2 share the 11x19 Time 2 art.
   var RUNE_ROWS_144 = [0x0008, 0x0010, 0x0028, 0x0041, 0x008A, 0x0044, 0x0028, 0x0010,
     0x0028, 0x0044, 0x008A, 0x0041, 0x0028, 0x0010, 0x0008];
-  var RUNE_ROWS_EMERY = [0x0010, 0x0020, 0x0050, 0x0080, 0x0111, 0x0202, 0x0414, 0x0208,
-    0x0110, 0x00A0, 0x0050, 0x00A0, 0x0110, 0x0208, 0x0414, 0x0202, 0x0111, 0x0080, 0x0050,
-    0x0020, 0x0010];
-  var RUNE_ROWS_ROUND2 = [0x0020, 0x0040, 0x00A0, 0x0100, 0x0220, 0x0401, 0x0822, 0x0404,
-    0x0228, 0x0110, 0x00A0, 0x0040, 0x00A0, 0x0110, 0x0228, 0x0404, 0x0822, 0x0401, 0x0220,
-    0x0100, 0x00A0, 0x0040, 0x0020];
+  var RUNE_ROWS_EMERY = [0x0020, 0x0060, 0x00E0, 0x01A0, 0x0323, 0x0326, 0x012C, 0x01F8,
+    0x0070, 0x0070, 0x00F0, 0x01F8, 0x0324, 0x0626, 0x0323, 0x01A0, 0x00E0, 0x0060, 0x0020];
 
   function runePath(rows, ox, oy) {
     var d = "";
@@ -2903,9 +2914,9 @@ version: TREK_SHIM_VERSION
       " data-tok-start=\"" + tok.start + "\" data-tok-end=\"" + tok.end + "\"" +
       " data-strip-x=\"" + g.x + "\" data-pad=\"" + g.pad + "\">" +
       "<rect id=\"trek-today-box\" x=\"" + g.x + "\" y=\"" + g.y + "\" width=\"0\" height=\"" +
-      g.boxH + "\" fill=\"" + invertDisplayColor(background) + "\"/>" +
+      g.boxH + "\" fill=\"" + color + "\"/>" +
       "<text id=\"trek-today-text\" x=\"" + g.x + "\" y=\"" + g.baseline + "\" font-size=\"" +
-      g.size + "\" text-anchor=\"start\" fill=\"" + invertDisplayColor(color) +
+      g.size + "\" text-anchor=\"start\" fill=\"" + background +
       "\" style=\"font-family:'TrekAntonio',sans-serif;letter-spacing:" + g.track +
       "px\">" + tok.text + "</text></g>";
   }
@@ -2941,9 +2952,9 @@ version: TREK_SHIM_VERSION
       "<rect x=\"" + left + "\" y=\"" + Math.round(baseline - height + 2) +
       "\" width=\"" + Math.max(8, Math.round(boxWidth === undefined ? cellWidth - 2 : boxWidth)) +
       "\" height=\"" +
-      height + "\" rx=\"2\" fill=\"" + invertDisplayColor(background) + "\"/>" +
+      height + "\" rx=\"2\" fill=\"" + color + "\"/>" +
       "<text x=\"" + left + "\" y=\"" + baseline + "\" font-size=\"" + fontSize +
-      "\" text-anchor=\"start\" fill=\"" + invertDisplayColor(color) +
+      "\" text-anchor=\"start\" fill=\"" + background +
       "\" style=\"font-family:'TrekAntonio',sans-serif\">" + token + "</text></g>";
   }
 
@@ -3260,7 +3271,7 @@ version: TREK_SHIM_VERSION
       result += textElement("80", 98, 135, 20, "end", secondary, "othertextcol",
         "Change secondary text color", "font-family:Impact,'Arial Narrow',sans-serif");
       result += bluetoothMarkup(disconnected, "M200 124 L214 138 M214 124 L200 138",
-        RUNE_ROWS_ROUND2, 202, 120, bluetooth, 2,
+        RUNE_ROWS_EMERY, 202, 122, bluetooth, 2,
         targetAttributes("bluetooth_color", "Change Bluetooth symbol color"));
       result += textElement(dayLine(), 55, 170, 16, "start", secondary, "othertextcol",
         "Change secondary text color", "font-family:sans-serif");
@@ -3320,7 +3331,7 @@ version: TREK_SHIM_VERSION
       result += textElement("80", 96, 130, 24, "end", secondary, "othertextcol",
         "Change secondary text color", "font-family:'TrekLCARS',Impact,sans-serif");
       result += bluetoothMarkup(disconnected, "M184 112 L195 125 M195 112 L184 125",
-        RUNE_ROWS_EMERY, 184, 109, bluetooth, 2,
+        RUNE_ROWS_EMERY, 184, 110, bluetooth, 2,
         targetAttributes("bluetooth_color", "Change Bluetooth symbol color"));
       // day strip: FONT_ANTONIO_21 in DAYS_RECT(25,134,190,41) -> ink y134..157
       if (!bracketDate) {

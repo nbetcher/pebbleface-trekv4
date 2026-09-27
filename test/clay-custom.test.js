@@ -656,9 +656,14 @@ test('refined preview geometry matches native weather, Bluetooth, battery, and p
   assert.match(basalt.canvas.innerHTML,
     /d="M135 80h1v1h-1z[^"]*M132 83h1v1h-1z[^"]*M132 91h1v1h-1z[^"]*M135 94h1v1h-1z"/,
     '144px Bluetooth rune matches the original 8x15 art in its native layer');
+  // Time 2 draws its own 11x19 5.x art (2px strokes): staff top, both 2px crossing
+  // tails at x=0 of the ink box, and the staff foot.
   assert.match(emery.canvas.innerHTML,
-    /d="M188 109h1v1h-1z[^"]*M184 113h1v1h-1z[^"]*M184 125h1v1h-1z[^"]*M188 129h1v1h-1z"/,
+    /d="M189 110h1v1h-1z[^"]*M184 114h2v1h-2z[^"]*M184 124h2v1h-2z[^"]*M189 128h1v1h-1z"/,
     'Time 2 Bluetooth rune is centered in its native layer');
+  assert.match(gabbro.canvas.innerHTML,
+    /d="M207 122h1v1h-1z[^"]*M202 126h2v1h-2z[^"]*M202 136h2v1h-2z[^"]*M207 140h1v1h-1z"/,
+    'Round 2 shares the Time 2 Bluetooth art, centered in its 32x24 notch');
 
   chalk.set('preview_disconnected', true);
   assert.equal(count(chalk.canvas.innerHTML, /data-preview-role="popup-rail"/g), 6);

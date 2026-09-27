@@ -102,6 +102,12 @@ schema, codec, capability, and generated-preview regression suite, and
 `pebble build` compiles and bundles all seven entries in `targetPlatforms`. The
 resulting PBW is written beneath `build/`.
 
+After editing `src/pkjs/clay-custom.js` or any file in `src/pkjs/shim/`, run
+`python3 make_shim.py`. It inlines the shim into `clay-custom.js` and regenerates
+the stripped `clay-custom.gen.js` that the phone actually loads;
+`python3 make_shim.py --check` (also run in CI) reports stale output without
+writing anything.
+
 ## Emulator and device testing
 
 Install the most recent build in an emulator:
