@@ -122,6 +122,12 @@ test('the manifest preserves the complete current hardware and resource matrix',
   assert.deepEqual(platforms('FONT_LCARS_68'),
     ['aplite', 'basalt', 'diorite', 'flint']);
   assert.equal(platforms('CLEAR_DAY'), null, 'every declared platform');
+  // The day strip is set in the original LCARS face (LCARS 20; 27 on Time 2).
+  assert.deepEqual(platforms('FONT_LCARS_20'), ['aplite', 'basalt', 'diorite', 'flint']);
+  assert.deepEqual(platforms('FONT_LCARS_27'), ['emery']);
+  assert.equal(media.some(function(resource) {
+    return resource.name === 'FONT_ANTONIO_16' || resource.name === 'FONT_ANTONIO_21';
+  }), false, 'the Antonio day-strip sizes are gone');
 });
 
 test('weather location access is explicit opt-in on first run', function() {

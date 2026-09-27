@@ -194,7 +194,7 @@ GRect AMPM_RECT      = ConstantGRect( 171,   0,  35,  28 );
 GRect SECS_AMPM_RECT = ConstantGRect( 167,   0,  31,  28 );
 GRect DATE_RECT      = ConstantGRect(  15, 184, 111,  68 );
 GRect WEEK_RECT      = ConstantGRect(   2, 186, 191,  68 );
-GRect DAYS_RECT      = ConstantGRect(  25, 134, 190,  41 );
+GRect DAYS_RECT      = ConstantGRect(  25, 129, 190,  41 );
 GRect BATT_RECT      = ConstantGRect(  99, 107,  82,  26 );
 GRect CHARGING_RECT  = ConstantGRect( 129, 107,  27,  23 );
 GRect BT_RECT        = ConstantGRect( 180, 108,  20,  23 );  // w17->20: the icon's black bg is the LCARS notch; it must reach the screen's right edge (x199) or the navy mid-bracket bar bleeds through past it (was a 2px sliver at x198-199). Rune (11px) stays centred at x184-194; battery's last seg ends x178 so x180 start clears it.
@@ -208,7 +208,7 @@ GRect AMPM_RECT      = ConstantGRect( 123,   0,  25,  21 );
 GRect SECS_AMPM_RECT = ConstantGRect( 123,   0,  23,  21 );
 GRect DATE_RECT      = ConstantGRect(  11, 136,  80,  50 );
 GRect WEEK_RECT      = ConstantGRect(   1, 137, 138,  50 );
-GRect DAYS_RECT      = ConstantGRect(  17,  99, 140,  30 );
+GRect DAYS_RECT      = ConstantGRect(  17,  95, 140,  30 );
 GRect BATT_RECT      = ConstantGRect(  71,  80,  59,  16 );
 GRect CHARGING_RECT  = ConstantGRect(  97,  79,  20,  17 );
 GRect BT_RECT        = ConstantGRect( 129,  79,  15,  17 );  // w11->15: notch must reach the right edge (x143) so the navy mid-bracket bar can't bleed past the icon (matches the emery fix). At w11 the 14px bluetooth-bw.png also crammed its right arm flush to the notch edge -> looked clipped; w15 fits the 14px art centred (content x132-139) with a clean black margin to the edge.
@@ -773,22 +773,40 @@ static void battery_layer_update_proc(Layer *layer, GContext *ctx) {
     (void)ink_left; (void)ink_right;   /* cell ink box now lives in the tile drawer */
 }
 
-/* The today marker's two colours, packed for effect_hard_invert: the day strip is drawn
-   in othertextcol over the screen background, so those are exactly the pair the marker
-   must snap between. */
-static void *today_highlight_param(void) {
-  uintptr_t packed = ((uintptr_t)(othertextcol.argb & 0xFF) << 8)
-                   | (uintptr_t)(backgroundcol.argb & 0xFF);
-  return (void *)packed;
-}
+/* Today marker geometry, from the original Trekv4/Trekv5 LCARS 20 strip: an 18x20
+   block starting 3px above the letters and ending 3px below them, centred on the day,
+   at least 2px from its letters and 2px clear of the neighbouring days. Time 2 uses the
+   same block scaled for LCARS 27 (26x25), as the pre-6.0 Time 2 build did.
+   DAY_HL_ACCENT is the empty band between the battery row and the block that accents
+   (Ú, Č) rise into; effect_day_highlight grows the block into it when needed. */
+#if defined(PBL_PLATFORM_EMERY)
+#define DAY_HL_YOFF   5
+#define DAY_HL_W      26
+#define DAY_HL_H      25
+#define DAY_HL_PAD    3
+#define DAY_HL_ACCENT 3
+#else
+#define DAY_HL_YOFF   3
+#define DAY_HL_W      18
+#define DAY_HL_H      20
+#define DAY_HL_PAD    2
+#define DAY_HL_ACCENT 2
+#endif
+#define DAY_HL_MARGIN (DAY_HL_W / 2 + 1)
 
-/* Re-pack after either colour changes, otherwise the marker keeps snapping to the
-   previous palette and today's block stops matching the strip. */
+/* The day strip is drawn in othertextcol over the screen background, so those are
+   exactly the pair the marker snaps between. */
+static DayHighlightParams s_day_hl = {
+  .box_w = DAY_HL_W, .min_pad = DAY_HL_PAD, .margin = DAY_HL_MARGIN,
+  .accent = DAY_HL_ACCENT, .bottom_pad = 3, .gap = 2
+};
+
+/* Pick up colour changes, otherwise the marker keeps snapping to the previous palette
+   and today's block stops matching the strip. */
 static void refresh_today_highlight_effect(void) {
-  if (!effect_layer2) { return; }
-  effect_layer_remove_effect(effect_layer2);
-  effect_layer_add_effect(effect_layer2, effect_hard_invert, today_highlight_param());
-  layer_mark_dirty(effect_layer_get_layer(effect_layer2));
+  s_day_hl.ink = othertextcol.argb;
+  s_day_hl.bg = backgroundcol.argb;
+  if (effect_layer2) { layer_mark_dirty(effect_layer_get_layer(effect_layer2)); }
 }
 
 void invert_screen(bool invert_format) {
@@ -903,25 +921,13 @@ static void apply_legacy_custom_color(int group, uint32_t rgb) {
 /*
   Handle tick events
 */
-// The day strings use double spaces (tuned for the original ultra-narrow font).
-// Antonio is wider and overflows at that spacing, so we collapse to single spaces
-// (same footprint, larger glyphs) on EVERY platform. This buffer holds the string
-// currently shown; the weekday highlight measures it too.
-static char days_buf[48];
+// The day strings as authored for the narrow LCARS face, double spaces included. The
+// weekday highlight measures this same string.
+static const char *days_text = "";
 static void set_days_text( void ) {
-  const char *src = startday_is_sunday ? day_lines2[current_language]
-                                       : day_lines[current_language];
-  int j = 0, prev_sp = 1;
-  for ( int i = 0; src[i] && j < (int)sizeof( days_buf ) - 1; i++ ) {
-    if ( src[i] == ' ' ) {
-      if ( !prev_sp ) { days_buf[j++] = ' '; prev_sp = 1; }
-    } else {
-      days_buf[j++] = src[i]; prev_sp = 0;
-    }
-  }
-  while ( j > 0 && days_buf[j - 1] == ' ' ) { j--; }
-  days_buf[j] = '\0';
-  if (text_days_layer) { text_layer_set_text(text_days_layer, days_buf); }
+  days_text = startday_is_sunday ? day_lines2[current_language]
+                                 : day_lines[current_language];
+  if (text_days_layer) { text_layer_set_text(text_days_layer, days_text); }
 }
 
 void handle_tick( struct tm *tick_time, TimeUnits notused ) {
@@ -946,13 +952,12 @@ void handle_tick( struct tm *tick_time, TimeUnits notused ) {
     } else {
       today = tick_time->tm_wday - 1; if ( today < 0 ) { today = 6; }
     }
-    // Dynamic today-highlight on EVERY platform: measure today's token in the day
-    // strip exactly as rendered (font/language/resolution-agnostic), so the box
-    // lands on today's day regardless of font metrics. This replaces the old
-    // hardcoded per-language highlight_rect[] tables (absolute coords that drifted
-    // whenever the font or resolution changed).
+    // Locate today's token in the strip as rendered (any font or language), replacing
+    // the old hand-placed per-language highlight_rect[] tables. The layer frame spans
+    // the token plus DAY_HL_MARGIN either side; effect_day_highlight centres the block
+    // on the token's drawn pixels.
     {
-      const char *ds = days_buf;   // the single-spaced strip we actually render
+      const char *ds = days_text;
       int len = 0; while ( ds[len] ) { len++; }
       int idx = 0, start = -1, tok_start = 0, tok_end = len;
       for ( int i = 0; i <= len; i++ ) {
@@ -973,22 +978,10 @@ void handle_tick( struct tm *tick_time, TimeUnits notused ) {
       for ( int i = 0; i < tn; i++ ) { buf[i] = ds[tok_start + i]; } buf[tn] = '\0';
       int tok_w = graphics_text_layout_get_content_size(
           buf, font_days, mbox, GTextOverflowModeWordWrap, GTextAlignmentLeft ).w;
-      // Per-platform highlight padding (x each side) + box height, sized to the
-      // day-strip font; y nudged to sit over the glyphs.
-      /* Proportions measured off the original Trekv4-OWM render: on 144x168 the block
-         is 18x20 around a ~12x14 token - 3px of padding on every side, so it sits 3px
-         proud of the glyphs top and bottom. The previous values were noticeably tighter
-         (pad 1, height 18) and read as a snug label rather than an LCARS block.
-         Emery scales that by x1.389. */
-#if defined(PBL_PLATFORM_EMERY)
-      const int hl_pad = 4, hl_h = 28, hl_yoff = -1;
-#else
-      const int hl_pad = 3, hl_h = 20, hl_yoff = -1;
-#endif
-      hl.origin.x = DAYS_RECT.origin.x + ( right_w - tok_w ) - hl_pad;
-      hl.origin.y = DAYS_RECT.origin.y + hl_yoff;
-      hl.size.w   = tok_w + 2 * hl_pad;
-      hl.size.h   = hl_h;
+      hl.origin.x = DAYS_RECT.origin.x + ( right_w - tok_w ) - DAY_HL_MARGIN;
+      hl.origin.y = DAYS_RECT.origin.y + DAY_HL_YOFF - DAY_HL_ACCENT;
+      hl.size.w   = tok_w + 2 * DAY_HL_MARGIN;
+      hl.size.h   = DAY_HL_H + DAY_HL_ACCENT;
     }
     if (effect_layer2) { layer_set_frame(effect_layer_get_layer(effect_layer2), hl); }
   }
@@ -1762,14 +1755,14 @@ void handle_init( void ) {
 #if defined(PBL_PLATFORM_EMERY)
   // emery (200x228) uses fonts scaled up ~1.35x from basalt to match the larger
   // canvas (the Trekv5 reference renders these enlarged sizes).
-  font_days   = fonts_load_custom_font( resource_get_handle( RESOURCE_ID_FONT_ANTONIO_21 ) );
+  font_days   = fonts_load_custom_font( resource_get_handle( RESOURCE_ID_FONT_LCARS_27 ) );
   font_date   = fonts_load_custom_font( resource_get_handle( RESOURCE_ID_FONT_ANTONIO_24 ) );
   small_batt  = fonts_load_custom_font( resource_get_handle( RESOURCE_ID_FONT_LCARSB_26 ) );
   batt_font   = fonts_load_custom_font( resource_get_handle( RESOURCE_ID_FONT_LCARSB_29 ) );
   small_batt2 = fonts_load_custom_font( resource_get_handle( RESOURCE_ID_FONT_LCARS_24  ) );
   font_time   = fonts_load_custom_font( resource_get_handle( RESOURCE_ID_FONT_LCARS_92  ) );
 #else
-  font_days   = fonts_load_custom_font( resource_get_handle( RESOURCE_ID_FONT_ANTONIO_16 ) );
+  font_days   = fonts_load_custom_font( resource_get_handle( RESOURCE_ID_FONT_LCARS_20 ) );
   font_date   = fonts_load_custom_font( resource_get_handle( RESOURCE_ID_FONT_ANTONIO_17 ) );  // test width-match: emery ANTONIO_24 * 144/200 = 17.3 (was 18 height-match, rendered wide -> date/week letters spread right of emery)
   small_batt  = fonts_load_custom_font( resource_get_handle( RESOURCE_ID_FONT_LCARSB_19 ) );
   small_batt2 = fonts_load_custom_font( resource_get_handle( RESOURCE_ID_FONT_LCARS_18  ) );
@@ -1863,9 +1856,10 @@ void handle_init( void ) {
     /* SATURATING inversion, matching the original Trekv4-OWM look: the block fills
        solid in the strip's own colour and today's glyphs knock out to the screen
        background at full contrast. A plain complement washed out as soon as the day
-       strip was not pure white (grey text inverted to grey text). Colours are re-packed
+       strip was not pure white (grey text inverted to grey text). Colours are refreshed
        whenever either preference changes - see refresh_today_highlight_effect(). */
-    effect_layer_add_effect(effect_layer2, effect_hard_invert, today_highlight_param());
+    refresh_today_highlight_effect();
+    effect_layer_add_effect(effect_layer2, effect_day_highlight, &s_day_hl);
     layer_add_child(window_layer, effect_layer_get_layer(effect_layer2));
   }
 

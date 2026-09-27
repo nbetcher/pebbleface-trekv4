@@ -33,13 +33,15 @@ var GPoint, GRect, grect_contains_point, GColorBlackARGB8, GColorWhiteARGB8;
 var graphics_capture_frame_buffer, graphics_release_frame_buffer;
 var gbitmap_get_data, gbitmap_get_bytes_per_row, gbitmap_get_format, gbitmap_get_bounds;
 var layer_create_with_data, layer_get_data, layer_destroy, layer_set_update_proc;
-var layer_get_bounds, layer_set_frame, layer_convert_point_to_screen;
+var layer_get_bounds, layer_set_frame, layer_convert_point_to_screen, cdiv;
 if (typeof module !== 'undefined' && module.exports) {
-  var _e10 = null, _e40 = null, _e70 = null;
+  var _e00 = null, _e10 = null, _e40 = null, _e70 = null;
+  try { _e00 = require('./00-cnum.js'); } catch (e3) { /* not landed yet */ }
   try { _e10 = require('./10-gcolor.js'); } catch (e0) { /* not landed yet */ }
   try { _e40 = require('./40-gcontext.js'); } catch (e1) { /* not landed yet */ }
   try { _e70 = require('./70-layer.js'); } catch (e2) { /* not landed yet */ }
-  _e10 = _e10 || {}; _e40 = _e40 || {}; _e70 = _e70 || {};
+  _e00 = _e00 || {}; _e10 = _e10 || {}; _e40 = _e40 || {}; _e70 = _e70 || {};
+  cdiv = _e00.cdiv;
   GPoint = _e10.GPoint; GRect = _e10.GRect;
   grect_contains_point = _e10.grect_contains_point;
   GColorBlackARGB8 = _e10.GColorBlackARGB8 !== undefined ? _e10.GColorBlackARGB8 : 0xC0;
@@ -174,9 +176,71 @@ function apply_hard_invert(ctx, position, ink, bg) {
   graphics_release_frame_buffer(ctx, info.framebuffer);
 }
 
-/* PORT OF src/c/effects.c:effect_hard_invert - param packs (ink << 8) | bg. */
-function effect_hard_invert(ctx, position, param) {
-  apply_hard_invert(ctx, position, (param >> 8) & 0xFF, param & 0xFF);
+/* effects.c: DAY_HL_OVERHANG - glyph ink may overhang the token's advance. */
+var DAY_HL_OVERHANG = 2;
+
+/* PORT OF src/c/effects.c:effect_day_highlight - param mirrors DayHighlightParams
+ * { ink, bg, box_w, min_pad, margin, accent, bottom_pad, gap }. See the C for the rules:
+ * box_w centred on today's ink (wider for min_pad), sides pulled in to stay `gap` clear
+ * of a neighbour's ink, top raised to 1px above an accent. */
+function effect_day_highlight(ctx, position, p) {
+  var info = {};
+  var frame_x0, frame_x1, block_top, block_bottom, scan_x0, scan_x1;
+  var ink_x0, ink_x1, ink_top, nb_left, nb_right, x, y, pixel;
+  var ink_w, box_w, pad_left, pad_right, room_left, room_right, pad, top;
+  if (!p) { return; }
+  if (!capture_bitmap(ctx, info)) {
+    if (info.framebuffer) { graphics_release_frame_buffer(ctx, info.framebuffer); }
+    return;
+  }
+  frame_x0 = position.origin.x;
+  frame_x1 = position.origin.x + position.size.w;
+  block_top = position.origin.y + p.accent;
+  block_bottom = position.origin.y + position.size.h;
+  scan_x0 = frame_x0 + p.margin - DAY_HL_OVERHANG;
+  scan_x1 = frame_x1 - p.margin + DAY_HL_OVERHANG;
+  ink_x0 = 32767; ink_x1 = -32768; ink_top = 32767;
+  nb_left = -32768; nb_right = 32767;
+  for (y = position.origin.y; y < block_bottom - p.bottom_pad; y++) {
+    for (x = frame_x0; x < frame_x1; x++) {
+      if (!pixel_is_valid(info, x, y)) { continue; }
+      pixel = get_pixel(info, x, y);
+      if (argb_distance(pixel, p.ink) > argb_distance(pixel, p.bg)) { continue; }
+      if (x < scan_x0) {
+        if (x > nb_left) { nb_left = x; }
+      } else if (x >= scan_x1) {
+        if (x < nb_right) { nb_right = x; }
+      } else {
+        if (x < ink_x0) { ink_x0 = x; }
+        if (x > ink_x1) { ink_x1 = x; }
+        if (y < ink_top) { ink_top = y; }
+      }
+    }
+  }
+  graphics_release_frame_buffer(ctx, info.framebuffer);
+  if (ink_x1 < ink_x0) {
+    ink_x0 = scan_x0;
+    ink_x1 = scan_x1 - 1;
+  }
+  ink_w = ink_x1 - ink_x0 + 1;
+  box_w = p.box_w;
+  if (box_w < ink_w + 2 * p.min_pad) { box_w = ink_w + 2 * p.min_pad; }
+  pad_left = cdiv(box_w - ink_w, 2);
+  pad_right = box_w - ink_w - pad_left;
+  room_left = ink_x0 - nb_left - 1 - p.gap;
+  room_right = nb_right - ink_x1 - 1 - p.gap;
+  if (pad_left > room_left || pad_right > room_right) {
+    pad = pad_left;
+    if (room_left < pad) { pad = room_left; }
+    if (room_right < pad) { pad = room_right; }
+    if (pad < p.min_pad) { pad = p.min_pad; }
+    pad_left = pad_right = pad;
+  }
+  top = block_top;
+  if (ink_top - 1 < top) { top = ink_top - 1; }
+  if (top < position.origin.y) { top = position.origin.y; }
+  apply_hard_invert(ctx, GRect(ink_x0 - pad_left, top, ink_w + pad_left + pad_right,
+      block_bottom - top), p.ink, p.bg);
 }
 
 /* PORT OF src/c/effect_layer.c:effect_layer_update_proc
@@ -273,7 +337,7 @@ if (typeof module !== 'undefined' && module.exports) {
     effect_invert: effect_invert,
     argb_distance: argb_distance,
     apply_hard_invert: apply_hard_invert,
-    effect_hard_invert: effect_hard_invert,
+    effect_day_highlight: effect_day_highlight,
     effects_apply_invert: effects_apply_invert,
     effect_layer_update_proc: effect_layer_update_proc,
     effect_layer_create: effect_layer_create,

@@ -207,6 +207,22 @@ test('the today highlight is a hard two-colour inversion, as on the watch', func
     [0x000000, 0xAAAAAA], 'day strip and highlight use only the strip and background colours');
 });
 
+test('the today block is the watch block, accents and neighbours included', function () {
+  // Czech Tuesday ("Ut" with an acute) on Time 2, measured on the emulator: the block
+  // grows to 1px above the accent - x70..94, y131..158.
+  var env = baseEnv({}, { day_line_raw: 'Ne  Po  \u00dat  St  \u010ct  P\u00e1  So' });
+  env.tm.wday = 2;
+  var r = shim.renderFace(env);
+  function white(x, y) {
+    var i = (y * r.w + x) * 4;
+    return r.rgba[i] === 255 && r.rgba[i + 1] === 255 && r.rgba[i + 2] === 255;
+  }
+  assert.ok(white(70, 131) && white(94, 131) && white(70, 158) && white(94, 158),
+    'block corners');
+  assert.ok(!white(69, 145) && !white(95, 145), 'block is 25px wide');
+  assert.ok(!white(82, 130) && !white(82, 159), 'block spans rows 131..158');
+});
+
 test('the preview BT rune is the same bitmask the watch draws', function () {
   // The rune is an exact-pixel bitmask in frame_tables.h (from the original
   // IMAGE_BLUETOOTH art); the preview must carry the identical emery rows.

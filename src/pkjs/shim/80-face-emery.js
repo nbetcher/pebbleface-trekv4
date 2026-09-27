@@ -71,7 +71,7 @@ var bitmap_layer_set_background_color, bitmap_layer_set_compositing_mode;
 var window_create, window_get_root_layer, window_set_background_color, window_stack_push;
 var gbitmap_create_with_resource;
 var effect_layer_create, effect_layer_get_layer, effect_layer_set_frame;
-var effect_layer_add_effect, effect_layer_destroy, effect_invert, effect_hard_invert;
+var effect_layer_add_effect, effect_layer_destroy, effect_invert, effect_day_highlight;
 if (typeof module !== 'undefined' && module.exports) {
   var _m = { c: null, g: null, p: null, f: null, x: null, r: null, t: null, l: null, e: null };
   try { _m.c = require('./00-cnum.js'); } catch (m0) { /* not landed yet */ }
@@ -148,7 +148,7 @@ if (typeof module !== 'undefined' && module.exports) {
   effect_layer_add_effect = _m.e.effect_layer_add_effect;
   effect_layer_destroy = _m.e.effect_layer_destroy;
   effect_invert = _m.e.effect_invert;
-  effect_hard_invert = _m.e.effect_hard_invert;
+  effect_day_highlight = _m.e.effect_day_highlight;
 }
 /* @endnoinline */
 
@@ -536,35 +536,22 @@ function popup_update_proc(layer, ctx) {
   }
 }
 
-/* PORT OF src/c/main.c:set_days_text
- * The day strings carry double spaces (tuned for the old ultra-narrow font);
- * Antonio overflows at that spacing, so runs of spaces collapse to one and
- * trailing spaces are trimmed. The today-highlight measures THIS string, so the
- * collapse has to happen before any text measurement. */
+/* PORT OF src/c/main.c:set_days_text - the day string is shown as authored for the
+ * narrow LCARS face, double spaces included. The today-highlight measures it too. */
 function set_days_text(src) {
-  var days_buf = [];
-  var j = 0, prev_sp = 1, i;
-  for (i = 0; i < src.length && j < 47; i++) {
-    if (src.charAt(i) === ' ') {
-      if (!prev_sp) { days_buf[j++] = ' '; prev_sp = 1; }
-    } else {
-      days_buf[j++] = src.charAt(i); prev_sp = 0;
-    }
-  }
-  while (j > 0 && days_buf[j - 1] === ' ') { j--; }
-  return days_buf.slice(0, j).join('');
+  return src;
 }
 
-/* PORT OF src/c/main.c:handle_tick lines 1121-1173 - the today-highlight rect.
+/* PORT OF src/c/main.c:handle_tick - the today-highlight layer frame.
  *
  * Measured, not tabulated: the strip prefix up to the end of today's token, and
  * today's token alone, are both measured with font_days through the SAME layout
- * walk that graphics_draw_text uses. That is what makes the box land on today
- * regardless of font metrics - and why any advance-width error here visibly
- * mis-places it. */
+ * walk that graphics_draw_text uses. The frame spans the token plus DAY_HL_MARGIN
+ * either side; effect_day_highlight centres the fixed-width block on the token's
+ * drawn pixels. */
 function todayHighlightRect(S) {
   var today, ds, len, idx, start, tok_start, tok_end, i, sp;
-  var mbox, n, right_w, tn, tok_w, hl_pad, hl_h, hl_yoff, days_rect;
+  var mbox, n, right_w, tn, tok_w, margin, days_rect;
 
   if (S.startday_is_sunday) {
     today = S.tm.wday; if (today < 0) { today = 6; }
@@ -592,12 +579,17 @@ function todayHighlightRect(S) {
   tok_w = graphics_text_layout_get_content_size(ds.substring(tok_start, tok_start + tn),
       S.font_days, mbox, GTextOverflowModeWordWrap, GTextAlignmentLeft).w;
 
-  hl_pad = S.layout.HL.pad; hl_h = S.layout.HL.h; hl_yoff = S.layout.HL.yoff;
+  margin = dayHighlightMargin(S);
   days_rect = faceRect(S, 'DAYS_RECT');
-  return GRect(days_rect.origin.x + (right_w - tok_w) - hl_pad,
-               days_rect.origin.y + hl_yoff,
-               tok_w + 2 * hl_pad,
-               hl_h);
+  return GRect(days_rect.origin.x + (right_w - tok_w) - margin,
+               days_rect.origin.y + S.layout.HL.yoff - S.layout.HL.accent,
+               tok_w + 2 * margin,
+               S.layout.HL.h + S.layout.HL.accent);
+}
+
+/* main.c: DAY_HL_MARGIN = DAY_HL_W / 2 + 1 */
+function dayHighlightMargin(S) {
+  return cdiv(S.layout.HL.w, 2) + 1;
 }
 
 /* PORT OF src/c/main.c:apply_bpm_layout (the layout effects only; the health
@@ -789,7 +781,7 @@ function faceBuild(S) {
   if (S.clock_is_24h) { time_rect.origin.y = time_rect.origin.y + 1; }
 
   /* Load fonts (main.c:1977-1982). */
-  S.font_days = fonts_load_custom_font(resource_get_handle('FONT_ANTONIO_21'));
+  S.font_days = fonts_load_custom_font(resource_get_handle('FONT_LCARS_27'));
   S.font_date = fonts_load_custom_font(resource_get_handle('FONT_ANTONIO_24'));
   S.small_batt = fonts_load_custom_font(resource_get_handle('FONT_LCARSB_26'));
   S.batt_font = fonts_load_custom_font(resource_get_handle('FONT_LCARSB_29'));
@@ -852,12 +844,15 @@ function faceBuild(S) {
   text_layer_set_text(S.text_days_layer, S.days_buf);
   layer_add_child(window_layer, text_layer_get_layer(S.text_days_layer));
 
-  /* 9. Today highlight - main.c's saturating effect_hard_invert between the strip
-        colour and the screen background (today_highlight_param). Frame is set by
-        faceTick. */
+  /* 9. Today highlight - main.c's effect_day_highlight with s_day_hl: a DAY_HL_W
+        block centred on today's letters, hard-inverted between the strip colour and
+        the screen background. Frame is set by faceTick. */
   S.effect_layer2 = effect_layer_create(EMPTY_RECT());
-  effect_layer_add_effect(S.effect_layer2, effect_hard_invert,
-      ((S.othertextcol & 0xFF) << 8) | (S.backgroundcol & 0xFF));
+  effect_layer_add_effect(S.effect_layer2, effect_day_highlight, {
+    ink: S.othertextcol & 0xFF, bg: S.backgroundcol & 0xFF,
+    box_w: S.layout.HL.w, min_pad: S.layout.HL.pad, margin: dayHighlightMargin(S),
+    accent: S.layout.HL.accent, bottom_pad: 3, gap: 2
+  });
   layer_add_child(window_layer, effect_layer_get_layer(S.effect_layer2));
 
   /* 10. Month-day date. */

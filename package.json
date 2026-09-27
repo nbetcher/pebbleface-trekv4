@@ -222,8 +222,8 @@
                     "type": "font"
                 },
                 {
-                    "file": "fonts/Antonio-SemiBold.ttf",
-                    "name": "FONT_ANTONIO_21",
+                    "file": "fonts/LCARS.ttf",
+                    "name": "FONT_LCARS_27",
                     "targetPlatforms": [
                         "emery"
                     ],
@@ -238,8 +238,8 @@
                     "type": "font"
                 },
                 {
-                    "file": "fonts/Antonio-SemiBold.ttf",
-                    "name": "FONT_ANTONIO_16",
+                    "file": "fonts/LCARS.ttf",
+                    "name": "FONT_LCARS_20",
                     "targetPlatforms": [
                         "aplite",
                         "basalt",

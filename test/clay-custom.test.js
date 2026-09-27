@@ -2,6 +2,8 @@
 
 var test = require('node:test');
 var assert = require('node:assert/strict');
+var fs = require('fs');
+var path = require('path');
 var config = require('../src/pkjs/config.js');
 var clayCustom = require('../src/pkjs/clay-custom.js');
 var includesCapability = require('@rebble/clay/src/scripts/lib/utils')
@@ -469,7 +471,7 @@ test('preview dates are current, localized, and use native punctuation', functio
   harness.set('language', '2');
   assert.match(harness.canvas.innerHTML, /data-preview-role="today-highlight"/);
   assert.match(harness.canvas.innerHTML,
-    /data-preview-role="today-highlight">[\s\S]*fill="#ffffff"[\s\S]*fill="#000000"/,
+    /data-preview-role="today-highlight"[^>]*>[\s\S]*fill="#ffffff"[\s\S]*fill="#000000"/,
     'today highlight inverts both the dark face and white weekday glyph');
   assert.doesNotMatch(harness.canvas.innerHTML, /AUG 9|STARDATE/);
 });
@@ -589,6 +591,77 @@ test('refined preview geometry matches native weather, Bluetooth, battery, and p
   assert.equal(count(emery.canvas.innerHTML, /data-preview-role="popup-rail"/g), 6);
 });
 
+// Render with the clock pinned to a given date (the preview reads new Date()).
+function atDate(year, month, day, fn) {
+  var RealDate = Date;
+  var fixed = new RealDate(year, month, day, 10, 8, 0).getTime();
+  function FakeDate() {
+    if (arguments.length) {
+      return new (Function.prototype.bind.apply(RealDate,
+        [null].concat(Array.prototype.slice.call(arguments))))();
+    }
+    return new RealDate(fixed);
+  }
+  FakeDate.now = function() { return fixed; };
+  FakeDate.UTC = RealDate.UTC;
+  FakeDate.prototype = RealDate.prototype;
+  global.Date = FakeDate;
+  try { return fn(); } finally { global.Date = RealDate; }
+}
+
+function todayBox(platform, model, language, day) {
+  return atDate(2026, 8, 27 + day, function() {   // 2026-09-27 is a Sunday
+    var harness = buildHarness(platform, model);
+    if (language) { harness.set('language', String(language)); }
+    var m = /id="trek-today-box" x="(-?\d+)" y="(\d+)" width="(\d+)" height="(\d+)"/
+      .exec(harness.canvas.innerHTML);
+    return m.slice(1).map(Number);
+  });
+}
+
+test('preview day strings are the watch strings, double spaces included', function() {
+  var source = fs.readFileSync(path.join(__dirname, '..', 'src', 'c', 'languages.h'), 'utf8');
+  function lines(name) {
+    var start = source.indexOf(name + '[]');
+    return source.slice(start, source.indexOf('};', start)).match(/"[^"]*"/g)
+      .map(function(q) { return q.slice(1, -1); });
+  }
+  [['1', lines('day_lines2')], ['0', lines('day_lines')]].forEach(function(week) {
+    week[1].forEach(function(expected, language) {
+      var harness = buildHarness('basalt', 'pebble_time');
+      harness.set('startday_status', week[0]);
+      harness.set('language', String(language));
+      var strip = />([^<]*)<\/text><g data-preview-role="today-highlight"/.exec(
+        harness.canvas.innerHTML);
+      assert.equal(strip && strip[1], expected, 'language ' + language);
+    });
+  });
+});
+
+test('the today block matches the watch for every day, language and screen', function() {
+  // Boxes measured on the basalt and Time 2 emulators (x, y, width, height).
+  var basalt = [14, 34, 53, 72, 92, 110, 126];
+  var emery = [21, 47, 73, 99, 125, 149, 172];
+  var day;
+  for (day = 0; day < 7; day++) {
+    assert.deepEqual(todayBox('basalt', 'pebble_time', 0, day), [basalt[day], 98, 18, 20],
+      'basalt day ' + day);
+    assert.deepEqual(todayBox('emery', 'pebble_time_2', 0, day), [emery[day], 134, 26, 25],
+      'Time 2 day ' + day);
+  }
+  // Accents grow the block to 1px above them (Czech "Út").
+  assert.deepEqual(todayBox('basalt', 'pebble_time', 16, 2), [52, 97, 18, 21]);
+  assert.deepEqual(todayBox('emery', 'pebble_time_2', 16, 2), [70, 131, 25, 28]);
+  // Sides pull in to stay 2px clear of a neighbouring day (Czech "St", Hungarian "P").
+  assert.deepEqual(todayBox('emery', 'pebble_time_2', 16, 3), [91, 134, 24, 25]);
+  assert.deepEqual(todayBox('emery', 'pebble_time_2', 15, 5), [128, 134, 22, 25]);
+});
+
+test('the day strip keeps its double spaces in the browser', function() {
+  var html = buildHarness('basalt', 'pebble_time').canvas.innerHTML;
+  assert.match(html, /id="trek-day-strip"[^>]*font-family:'TrekLCARS'[^"]*white-space:pre/);
+});
+
 test('heart-rate bracket preview masks the frame before redrawing the day strip', function() {
   var emery = buildHarness('emery', 'pebble_time_2');
   var html;
@@ -600,7 +673,7 @@ test('heart-rate bracket preview masks the frame before redrawing the day strip'
   emery.set('date_bracket', true);
   html = emery.canvas.innerHTML;
   mask = html.indexOf('data-preview-role="bracket-date-mask"');
-  days = html.indexOf('>Su Mo Tu We Th Fr Sa<');
+  days = html.indexOf('>Su  Mo  Tu  We  Th  Fr  Sa<');
   highlight = html.indexOf('data-preview-role="today-highlight"');
   assert.ok(mask >= 0 && days > mask && highlight > days,
     'date background cannot erase the day text or today highlight');
