@@ -60,7 +60,7 @@ on the Settings page.
 - Node.js 20.17+ (or 22.9+) and npm 11.17.0.
 - Python 3.13 and [`uv`](https://docs.astral.sh/uv/).
 - The community-maintained Rebble Pebble Tool and an installed Pebble SDK. SDK
-  4.17 is the verified development version; 4.5 remains useful for compatibility
+  4.33.1 is the verified development version; 4.5 remains useful for compatibility
   checks.
 - QEMU/emulator dependencies, or a Pebble connected through the phone app, for
   runtime verification.
@@ -72,9 +72,9 @@ direct QEMU transport when that phone-side bridge is unavailable.
 Install the command-line tool and SDK:
 
 ```sh
-uv tool install "pebble-tool==5.0.39" --python 3.13
-pebble sdk install 4.17
-pebble sdk activate 4.17
+uv tool install "pebble-tool==5.0.40" --python 3.13
+pebble sdk install 4.33.1
+pebble sdk activate 4.33.1
 pebble --version
 ```
 
@@ -144,7 +144,7 @@ pebble logs --phone <phone-ip>
 ## Releases
 
 `.github/workflows/build-pbw.yml` builds the PBW in GitHub Actions with the same
-pinned tool/SDK pair listed above (`pebble-tool` 5.0.39, SDK 4.17), after running
+pinned tool/SDK pair listed above (`pebble-tool` 5.0.40, SDK 4.33.1), after running
 `npm run check` and `npm test`. It is started manually from **Actions > Build PBW
 > Run workflow**; there is no automatic trigger yet.
 
