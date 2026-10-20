@@ -54,6 +54,62 @@ static bool battery_colorized;
 static enum backgroundKeys { BGND_BLUE = 0, BGND_LTBLUE, BGND_PURPLES, BGND_YELLOW, BGND_WHITE, BGND_GREY, BGND_RED, BGND_DKBLUE, BGND_LTGREEN, BGND_DKGREEN, BGND_DKBLUE2, BGND_BORG, BGND_CUSTOM, BGND_END = BGND_CUSTOM } current_background;
 static enum formatKeys { FORMAT_WEEK = 0, FORMAT_DOTY, FORMAT_DDMMYY, FORMAT_MMDDYY, FORMAT_WXDX, FORMAT_INT, FORMAT_DOT, FORMAT_YWD, FORMAT_END = FORMAT_YWD } current_format;
 static enum languageKeys { LANG_EN = 0, LANG_NL, LANG_DE, LANG_FR, LANG_HR, LANG_ES, LANG_IT, LANG_NO, LANG_SW, LANG_FI, LANG_DA, LANG_TU, LANG_CA, LANG_SL, LANG_PO, LANG_HU, LANG_CZ, LANG_END = LANG_CZ } current_language;
+
+/* The selected language's text, read from the LANG_DATA raw resource (built by
+   make_lang_data.py from resources/data/languages.json). Only one language is held
+   in RAM; load_language() swaps it when the setting changes. */
+#define LANG_RECORD_MAX 160
+#define LANG_NSTR       16
+enum { LSTR_DAYS_MON = 0, LSTR_DAYS_SUN = 1, LSTR_MONTH0 = 2, LSTR_WEEK_FMT = 14, LSTR_DATE_FMT = 15 };
+static char lang_buf[LANG_RECORD_MAX];
+static const char *lang_str[LANG_NSTR];
+
+static void load_language(int lang) {
+  static const char empty[] = "";
+  for (int i = 0; i < LANG_NSTR; i++) { lang_str[i] = empty; }
+
+  ResHandle h = resource_get_handle(RESOURCE_ID_LANG_DATA);
+  uint8_t hdr[5], off[4];
+  if (resource_load_byte_range(h, 0, hdr, sizeof(hdr)) != sizeof(hdr) ||
+      hdr[0] != 'T' || hdr[1] != 'L' || hdr[2] != 1 || hdr[4] != LANG_NSTR ||
+      lang < 0 || lang >= hdr[3] ||
+      resource_load_byte_range(h, 5 + 2 * lang, off, sizeof(off)) != sizeof(off)) {
+    APP_LOG(APP_LOG_LEVEL_ERROR, "language %d: bad LANG_DATA header", lang);
+    return;
+  }
+  uint32_t start = off[0] | ((uint32_t)off[1] << 8);
+  uint32_t end   = off[2] | ((uint32_t)off[3] << 8);
+  size_t n = end > start ? end - start : 0;
+  if (n == 0 || n > LANG_RECORD_MAX ||
+      resource_load_byte_range(h, start, (uint8_t *)lang_buf, n) != n ||
+      lang_buf[n - 1] != '\0') {
+    APP_LOG(APP_LOG_LEVEL_ERROR, "language %d: bad LANG_DATA record", lang);
+    return;
+  }
+  const char *found[LANG_NSTR];
+  int k = 0;
+  for (size_t p = 0; p < n && k < LANG_NSTR; k++) {
+    found[k] = lang_buf + p;
+    while (lang_buf[p] != '\0') { p++; }
+    p++;
+  }
+  if (k != LANG_NSTR) {
+    APP_LOG(APP_LOG_LEVEL_ERROR, "language %d: record has %d strings", lang, k);
+    return;
+  }
+  for (int i = 0; i < LANG_NSTR; i++) { lang_str[i] = found[i]; }
+}
+
+/* English day-of-month suffix: 1st 2nd 3rd 4th ... 11th 12th 13th ... 21st 31st. */
+static const char *ordinal_suffix(int mday) {
+  if (mday >= 11 && mday <= 13) { return "th"; }
+  switch (mday % 10) {
+    case 1:  return "st";
+    case 2:  return "nd";
+    case 3:  return "rd";
+    default: return "th";
+  }
+}
 static enum batteryBackgroundKeys { BATTBG_BLACK = 0, BATTBG_SAME_AS_BG_IMAGE, BATTBG_SAME_AS_BG_COLOR, BATTBG_END = BATTBG_SAME_AS_BG_COLOR } battery_background;
 
 // Setting keys
@@ -232,11 +288,6 @@ static void draw_classic_battery_tile(GContext *ctx, GPoint p, bool full, GColor
 // peek is treated as real state, including a watchface launched while offline.
 static bool prev_bt_status;
 static bool bt_status_initialized;
-
-#ifdef LANGUAGE_TESTING
-  static int ct = 1;
-  static int speed = 5;
-#endif
 
 #if defined(PBL_HEALTH)
 static TextLayer *steps_label;
@@ -875,7 +926,7 @@ static void draw_classic_battery_tile(GContext *ctx, GPoint p, bool full, GColor
   /* ink box inside the cell: x/y offset, then width/height */
 #if defined(PBL_PLATFORM_EMERY)
   const int ix = 3, iy = 2, iw = 4, ih = 21;
-#else   /* basalt / aplite / diorite / flint - the original 144x168 geometry */
+#else   /* basalt / diorite / flint - the original 144x168 geometry */
   const int ix = 1, iy = 2, iw = 3, ih = 14;
 #endif
 
@@ -925,8 +976,8 @@ static void apply_legacy_custom_color(int group, uint32_t rgb) {
 // weekday highlight measures this same string.
 static const char *days_text = "";
 static void set_days_text( void ) {
-  days_text = startday_is_sunday ? day_lines2[current_language]
-                                 : day_lines[current_language];
+  days_text = startday_is_sunday ? lang_str[LSTR_DAYS_SUN]
+                                 : lang_str[LSTR_DAYS_MON];
   if (text_days_layer) { text_layer_set_text(text_days_layer, days_text); }
 }
 
@@ -953,7 +1004,7 @@ void handle_tick( struct tm *tick_time, TimeUnits notused ) {
       today = tick_time->tm_wday - 1; if ( today < 0 ) { today = 6; }
     }
     // Locate today's token in the strip as rendered (any font or language), replacing
-    // the old hand-placed per-language highlight_rect[] tables. The layer frame spans
+    // the old hand-placed per-language highlight tables. The layer frame spans
     // the token plus DAY_HL_MARGIN either side; effect_day_highlight centres the block
     // on the token's drawn pixels.
     {
@@ -986,18 +1037,9 @@ void handle_tick( struct tm *tick_time, TimeUnits notused ) {
     if (effect_layer2) { layer_set_frame(effect_layer_get_layer(effect_layer2), hl); }
   }
 
-#ifdef LANGUAGE_TESTING
-  if (effect_layer2) {
-    layer_set_frame(effect_layer_get_layer(effect_layer2), hightlight_rect[current_language][ct]);
-  }
-  if ( tick_time->tm_sec % speed == 0 ) { ct++; }
-  if ( ct == 7 ) { ct = 0; }
-#endif
-
 #ifdef PBL_HEALTH
   /* Significant updates are not guaranteed at midnight. Refresh on a detected
-     date transition so yesterday's total never lingers into the new day. Keep
-     this outside LANGUAGE_TESTING so production builds execute it too. */
+     date transition so yesterday's total never lingers into the new day. */
   static int last_yday = -1;
   if (last_yday != tick_time->tm_yday) {
     last_yday = tick_time->tm_yday;
@@ -1006,10 +1048,10 @@ void handle_tick( struct tm *tick_time, TimeUnits notused ) {
 #endif
 
   strftime( date_text, sizeof( date_text ),
-            date_formats[current_language], tick_time );
+            lang_str[LSTR_DATE_FMT], tick_time );
   const char *date_suffix = current_language == LANG_EN
-      ? ordinal_numbers[tick_time->tm_mday - 1]
-      : month_names_arr[current_language][tick_time->tm_mon];
+      ? ordinal_suffix(tick_time->tm_mday)
+      : lang_str[LSTR_MONTH0 + tick_time->tm_mon];
   size_t date_used = strlen(date_text);
   snprintf(date_text + date_used, sizeof(date_text) - date_used, "%s", date_suffix);
 
@@ -1037,7 +1079,7 @@ void handle_tick( struct tm *tick_time, TimeUnits notused ) {
   // Update week or day of the year (i.e. Week 15 or 2013-118)
   if ( current_format == FORMAT_WEEK ) {
     strftime( week_text, sizeof( week_text ),
-              week_formats[current_language], tick_time );
+              lang_str[LSTR_WEEK_FMT], tick_time );
     text_layer_set_text( text_week_layer, week_text );
   } else {
     strftime( alt_text, sizeof( alt_text ),
@@ -1148,6 +1190,7 @@ static void tuple_changed_callback( const uint32_t key, const Tuple* tuple_new, 
 
       persist_write_int( SETTING_LANGUAGE_KEY, value );
       current_language = value;
+      load_language(current_language);
       set_days_text();        // refresh the day strip for the new language
       break;
 
@@ -1344,7 +1387,7 @@ static void tuple_changed_callback( const uint32_t key, const Tuple* tuple_new, 
       apply_bpm_layout();
 #elif defined(PBL_HEALTH)
       // steps_label / footprint_layer only exist when PBL_HEALTH is defined; on
-      // health-less platforms (aplite) they are NULL and must not be touched.
+      // health-less builds they are NULL and must not be touched.
       if (steps_label) { layer_set_hidden(text_layer_get_layer(steps_label), !steps_status); }
       if (footprint_layer) { layer_set_hidden(FOOTPRINT_LAYER_GET(footprint_layer), !steps_status); }
       layer_set_hidden(text_layer_get_layer(text_week_layer),    steps_status);
@@ -1674,13 +1717,14 @@ void handle_init( void ) {
   }
   apply_custom_colors();
   // Clamp persisted enums to valid ranges. Without this, a corrupt or older/newer
-  // build's persisted value would index day_lines[]/background_images_array[]/etc.
-  // out of bounds on the next render -> crash. (tuple_changed_callback validates
+  // build's persisted value would index render tables out of bounds on the next
+  // render -> crash. (tuple_changed_callback validates
   // incoming messages, but load-from-persist did not.)
   if (current_language > LANG_END) {
     current_language = LANG_EN;
     persist_write_int(SETTING_LANGUAGE_KEY, current_language);
   }
+  load_language(current_language);
   if (current_format > FORMAT_END) {
     current_format = FORMAT_WEEK;
     persist_write_int(SETTING_FORMAT_KEY, current_format);

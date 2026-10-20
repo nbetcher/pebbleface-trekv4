@@ -105,7 +105,7 @@ function activateWatchProfile(context) {
   // Clay's capability checks require a valid watch object, so its internal
   // value uses the codec's least-capable fallback. metadataAvailable remains
   // false so the custom page flags the unknown watch instead of claiming that
-  // it is really an Aplite.
+  // it is really that watch.
   clay.meta = {
     activeWatchInfo: Codec.watchMetadataForClay(context.watchInfo),
     accountToken: context.accountToken || '',

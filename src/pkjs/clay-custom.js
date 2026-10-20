@@ -5,16 +5,15 @@ module.exports = function(minified) {
   var watchInfo = clayConfig.meta.activeWatchInfo || null;
   var metadataAvailable = !(clayConfig.meta.userData &&
     clayConfig.meta.userData.metadataAvailable === false);
-  var platform = watchInfo && watchInfo.platform ? watchInfo.platform : "aplite";
+  var platform = watchInfo && watchInfo.platform ? watchInfo.platform : "diorite";
   var model = watchInfo && watchInfo.model ? String(watchInfo.model).toLowerCase() : "";
-  var knownPlatforms = ["aplite", "basalt", "diorite", "emery", "flint"];
+  var knownPlatforms = ["basalt", "diorite", "emery", "flint"];
 
   if (knownPlatforms.indexOf(platform) === -1) {
-    platform = "aplite";
+    platform = "diorite";
   }
 
   var isColor = platform === "basalt" || platform === "emery";
-  var hasHealth = platform !== "aplite";
   var hasHrm = platform === "emery" ||
     (platform === "diorite" && model.indexOf("pebble_2_hr") !== -1);
   var pickerOrigin = null;
@@ -2505,7 +2504,6 @@ version: TREK_SHIM_VERSION
     "Setmana %V","Týžden %V","Semana %V","%V. hét","%V. týden"];
 
   var PLATFORM_NAMES = {
-    "aplite": "Pebble / Pebble Steel",
     "basalt": "Pebble Time / Time Steel",
     "diorite": "Pebble 2",
     "emery": "Pebble Time 2",
@@ -3258,7 +3256,7 @@ version: TREK_SHIM_VERSION
     var seconds = numericString(get("secs_ampm", "1"), 1) === "1";
     var format = parseInt(numericString(get("format", "0"), 0), 10);
     var leftHeart = hasHrm && numericString(get("bottom_left", "1"), 1) === "0";
-    var rightSteps = hasHealth && numericString(get("bottom_right", "1"), 1) === "0";
+    var rightSteps = numericString(get("bottom_right", "1"), 1) === "0";
     var bracketDate = leftHeart && bool(get("date_bracket", false));
     var disconnected = bool(get("preview_disconnected", false));
     var celsius = get("units", "fahrenheit") === "celsius";
@@ -3448,7 +3446,7 @@ version: TREK_SHIM_VERSION
     var hour12 = hour % 12 || 12;
     var seconds = numericString(get("secs_ampm", "1"), 1) === "1";
     var leftHeart = hasHrm && numericString(get("bottom_left", "1"), 1) === "0";
-    var rightSteps = hasHealth && numericString(get("bottom_right", "1"), 1) === "0";
+    var rightSteps = numericString(get("bottom_right", "1"), 1) === "0";
     var format = parseInt(numericString(get("format", "0"), 0), 10);
     var celsius = get("units", "fahrenheit") === "celsius";
     var weatherConfigured = bool(get("use_gps", false)) ||

@@ -15,7 +15,7 @@ from the compiled fonts rather than from the TTFs:
 
 Each atlas entry keeps the codepoints it already has. The day-strip font (and any
 font new to the pack) also gets every character of the day strings in
-src/c/languages.h. A newly added font starts from the largest existing text subset.
+resources/data/languages.json. A newly added font starts from the largest existing text subset.
 Codepoints the font does not contain are dropped; the watch and the preview then
 both draw the wildcard glyph.
 
@@ -38,7 +38,7 @@ PKJS = os.path.join(ROOT, "src", "pkjs")
 PREVIEW_DATA = os.path.join(PKJS, "preview-data.js")
 CLAY_CUSTOM = os.path.join(PKJS, "clay-custom.js")
 MAIN_C = os.path.join(ROOT, "src", "c", "main.c")
-LANGUAGES_H = os.path.join(ROOT, "src", "c", "languages.h")
+LANGUAGES_JSON = os.path.join(ROOT, "resources", "data", "languages.json")
 
 APP_PACK_TABLE_SIZE = 256            # pbpack.py: non-system packs
 PACK_MARKER = "var TREK_GFX_PACK = "
@@ -145,10 +145,9 @@ def atlas_entry(key, max_height, wildcard, glyphs, cps):
 # ---- sources -----------------------------------------------------------------
 
 def day_chars():
-    with open(LANGUAGES_H, encoding="utf-8") as f:
-        src = f.read()
-    body = src[src.index("day_lines[]"):src.index("};", src.index("day_lines2[]"))]
-    return set("".join(re.findall(r'"([^"]*)"', body)))
+    with open(LANGUAGES_JSON, encoding="utf-8") as f:
+        languages = json.load(f)["languages"]
+    return set("".join(l["days_monday_first"] + l["days_sunday_first"] for l in languages))
 
 
 def day_fonts():

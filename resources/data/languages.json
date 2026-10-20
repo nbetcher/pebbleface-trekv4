@@ -1,0 +1,362 @@
+{
+  "_comment": "Watch-side language text. Order is the language setting's index. Edit here, then run python3 make_lang_data.py to rebuild languages.bin.",
+  "languages": [
+    {
+      "name": "English",
+      "days_monday_first": "Mo  Tu  We  Th  Fr  Sa  Su",
+      "days_sunday_first": "Su  Mo  Tu  We  Th  Fr  Sa",
+      "months": [
+        "Jan",
+        "Feb",
+        "Mar",
+        "Apr",
+        "May",
+        "Jun",
+        "Jul",
+        "Aug",
+        "Sep",
+        "Oct",
+        "Nov",
+        "Dec"
+      ],
+      "week_format": "Week %V",
+      "date_format": "%b %e"
+    },
+    {
+      "name": "Dutch",
+      "days_monday_first": "Ma  Di  Wo  Do  Vr  Za  Zo",
+      "days_sunday_first": "Zo  Ma  Di  Wo  Do  Vr  Za",
+      "months": [
+        "Jan",
+        "Feb",
+        "Mrt",
+        "Apr",
+        "Mei",
+        "Jun",
+        "Jul",
+        "Aug",
+        "Sep",
+        "Okt",
+        "Nov",
+        "Dec"
+      ],
+      "week_format": "Week %V",
+      "date_format": "%e "
+    },
+    {
+      "name": "German",
+      "days_monday_first": "Mo  Di  Mi  Do  Fr  Sa  So",
+      "days_sunday_first": "So  Mo  Di  Mi  Do  Fr  Sa",
+      "months": [
+        "Jan",
+        "Feb",
+        "Mär",
+        "Apr",
+        "Mai",
+        "Jun",
+        "Jul",
+        "Aug",
+        "Sep",
+        "Okt",
+        "Nov",
+        "Dez"
+      ],
+      "week_format": "Woche %V",
+      "date_format": "%e. "
+    },
+    {
+      "name": "French",
+      "days_monday_first": "Lu  Ma  Me  Je  Ve  Sa  Di",
+      "days_sunday_first": "Di  Lu  Ma  Me  Je  Ve  Sa",
+      "months": [
+        "Jan",
+        "Fév",
+        "Mar",
+        "Avr",
+        "Mai",
+        "Jun",
+        "Jui",
+        "Aoû",
+        "Sep",
+        "Oct",
+        "Nov",
+        "Déc"
+      ],
+      "week_format": "Semaine %V",
+      "date_format": "%e "
+    },
+    {
+      "name": "Croatian",
+      "days_monday_first": "Po  Vt  Sr  Ce  Pe  Su  Ne",
+      "days_sunday_first": "Ne  Po  Vt  Sr  Ce  Pe  Su",
+      "months": [
+        "Sij",
+        "Vel",
+        "Ožu",
+        "Tra",
+        "Svi",
+        "Lip",
+        "Srp",
+        "Kol",
+        "Ruj",
+        "Lis",
+        "Stu",
+        "Pro"
+      ],
+      "week_format": "%V. Tjedan",
+      "date_format": "%e. "
+    },
+    {
+      "name": "Spanish",
+      "days_monday_first": "Lu  Ma  Mi  Ju  Vi  Sá  Do",
+      "days_sunday_first": "Do  Lu  Ma  Mi  Ju  Vi  Sá",
+      "months": [
+        "Ene",
+        "Feb",
+        "Mar",
+        "Abr",
+        "May",
+        "Jun",
+        "Jul",
+        "Ago",
+        "Sep",
+        "Oct",
+        "Nov",
+        "Dic"
+      ],
+      "week_format": "Semana %V",
+      "date_format": "%e "
+    },
+    {
+      "name": "Italian",
+      "days_monday_first": "Lu  Ma  Me  Gi  Ve  Sa  Do",
+      "days_sunday_first": "Do  Lu  Ma  Me  Gi  Ve  Sa",
+      "months": [
+        "Gen",
+        "Feb",
+        "Mar",
+        "Apr",
+        "Mag",
+        "Giu",
+        "Lug",
+        "Ago",
+        "Set",
+        "Ott",
+        "Nov",
+        "Dic"
+      ],
+      "week_format": "%V. Setti.",
+      "date_format": "%e. "
+    },
+    {
+      "name": "Norwegian",
+      "days_monday_first": "Ma  Ti  On  To  Fr  Lø  Sø",
+      "days_sunday_first": "Sø  Ma  Ti  On  To  Fr  Lø",
+      "months": [
+        "Jan",
+        "Feb",
+        "Mar",
+        "Apr",
+        "Mai",
+        "Jun",
+        "Jul",
+        "Aug",
+        "Sep",
+        "Okt",
+        "Nov",
+        "Des"
+      ],
+      "week_format": "Uke %V",
+      "date_format": "%e. "
+    },
+    {
+      "name": "Swedish",
+      "days_monday_first": "Må  Ti  On  To  Fr  Lö  Sö",
+      "days_sunday_first": "Sö  Må  Ti  On  To  Fr  Lö",
+      "months": [
+        "Jan",
+        "Feb",
+        "Mar",
+        "Apr",
+        "Maj",
+        "Jun",
+        "Jul",
+        "Aug",
+        "Sep",
+        "Okt",
+        "Nov",
+        "Dec"
+      ],
+      "week_format": "Vecka %V",
+      "date_format": "%e. "
+    },
+    {
+      "name": "Finnish",
+      "days_monday_first": "Ma  Ti  Ke  To  Pe  La  Su",
+      "days_sunday_first": "Su  Ma  Ti  Ke  To  Pe  La",
+      "months": [
+        "Tam",
+        "Hel",
+        "Maa",
+        "Huh",
+        "Tou",
+        "Kes",
+        "Hei",
+        "Elo",
+        "Syy",
+        "Lok",
+        "Mar",
+        "Jou"
+      ],
+      "week_format": "VKO %V",
+      "date_format": "%e. "
+    },
+    {
+      "name": "Danish",
+      "days_monday_first": "Ma  Ti  On  To  Fr  Lø  Sø",
+      "days_sunday_first": "Sø  Ma  Ti  On  To  Fr  Lø",
+      "months": [
+        "Jan",
+        "Feb",
+        "Mar",
+        "Apr",
+        "Maj",
+        "Jun",
+        "Jul",
+        "Aug",
+        "Sep",
+        "Okt",
+        "Nov",
+        "Dec"
+      ],
+      "week_format": "Uge %V",
+      "date_format": "%e. "
+    },
+    {
+      "name": "Turkish",
+      "days_monday_first": "Pt  Sa  Ça  Pe  Cu  Ct  Pz",
+      "days_sunday_first": "Pz  Pt  Sa  Ça  Pe  Cu  Ct",
+      "months": [
+        "Oca",
+        "Şub",
+        "Mar",
+        "Nis",
+        "May",
+        "Haz",
+        "Tem",
+        "Ağu",
+        "Eyl",
+        "Eki",
+        "Kas",
+        "Ara"
+      ],
+      "week_format": "%V. Hafta",
+      "date_format": "%e "
+    },
+    {
+      "name": "Catalan",
+      "days_monday_first": "Dl  Dt  Dc  Dj  Dv  Ds  Dg",
+      "days_sunday_first": "Dg  Dl  Dt  Dc  Dj  Dv  Ds",
+      "months": [
+        "Gen",
+        "Feb",
+        "Mar",
+        "Abr",
+        "Mai",
+        "Jun",
+        "Jul",
+        "Ago",
+        "Set",
+        "Oct",
+        "Nov",
+        "Des"
+      ],
+      "week_format": "Setmana %V",
+      "date_format": "%e "
+    },
+    {
+      "name": "Slovak",
+      "days_monday_first": "Po  Ut  St  Št  Pi  So  Ne",
+      "days_sunday_first": "Ne  Po  Ut  St  Št  Pi  So",
+      "months": [
+        "Jan",
+        "Feb",
+        "Mar",
+        "Apr",
+        "Máj",
+        "Jún",
+        "Júl",
+        "Aug",
+        "Set",
+        "Okt",
+        "Nov",
+        "Dec"
+      ],
+      "week_format": "Týžden %V",
+      "date_format": "%e "
+    },
+    {
+      "name": "Portuguese",
+      "days_monday_first": "Se  Te  Qu  Qi  Se  Sá  Do",
+      "days_sunday_first": "Do  Se  Te  Qu  Qi  Se  Sá",
+      "months": [
+        "Jan",
+        "Fev",
+        "Mar",
+        "Abr",
+        "Mai",
+        "Jun",
+        "Jul",
+        "Ago",
+        "Set",
+        "Out",
+        "Nov",
+        "Dez"
+      ],
+      "week_format": "Semana %V",
+      "date_format": "%e "
+    },
+    {
+      "name": "Hungarian",
+      "days_monday_first": "H   K   Sz  Cs  P   Sz  V",
+      "days_sunday_first": "V   H   K   Sz  Cs  P   Sz",
+      "months": [
+        "Jan",
+        "feb",
+        "Már",
+        "Ápr",
+        "Máj",
+        "Jún",
+        "Júl",
+        "Aug",
+        "Szep",
+        "Okt",
+        "Nov",
+        "Dec"
+      ],
+      "week_format": "%V. hét",
+      "date_format": "%e "
+    },
+    {
+      "name": "Czech",
+      "days_monday_first": "Po  Út  St  Čt  Pá  So  Ne",
+      "days_sunday_first": "Ne  Po  Út  St  Čt  Pá  So",
+      "months": [
+        "Led",
+        "Úno",
+        "Bře",
+        "Dub",
+        "Kvě",
+        "Čvn",
+        "Čvc",
+        "Srp",
+        "Zář",
+        "Říj",
+        "Lis",
+        "Pro"
+      ],
+      "week_format": "%V. týden",
+      "date_format": "%e "
+    }
+  ]
+}

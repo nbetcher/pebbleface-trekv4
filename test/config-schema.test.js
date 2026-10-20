@@ -110,20 +110,25 @@ test('the manifest preserves the complete current hardware and resource matrix',
     }).targetPlatforms;
   }
 
-  // Rectangular watches only: no Pebble Time Round (chalk) or Round 2 (gabbro).
+  // Rectangular watches only: no Pebble Time Round (chalk) or Round 2 (gabbro), and
+  // no original Pebble / Pebble Steel (aplite), whose 24 KB app slot is too small.
   assert.deepEqual(manifest.pebble.targetPlatforms,
-    ['aplite', 'basalt', 'diorite', 'emery', 'flint']);
+    ['basalt', 'diorite', 'emery', 'flint']);
   assert.deepEqual(platforms('IMAGE_FOOTPRINT'), ['basalt', 'diorite', 'emery', 'flint']);
   assert.deepEqual(platforms('IMAGE_HEART'), ['emery', 'diorite']);
   assert.equal(platforms('IMAGE_CHARGING'), null, 'every declared platform');
   assert.equal(media.some(function(resource) { return resource.name === 'IMAGE_BACKGROUND1'; }),
     false, 'the round-only raster frame is gone');
   assert.deepEqual(platforms('FONT_LCARS_92'), ['emery']);
-  assert.deepEqual(platforms('FONT_LCARS_68'),
-    ['aplite', 'basalt', 'diorite', 'flint']);
+  assert.deepEqual(platforms('FONT_LCARS_68'), ['basalt', 'diorite', 'flint']);
   assert.equal(platforms('CLEAR_DAY'), null, 'every declared platform');
   // The day strip is set in the original LCARS face (LCARS 20; 27 on Time 2).
-  assert.deepEqual(platforms('FONT_LCARS_20'), ['aplite', 'basalt', 'diorite', 'flint']);
+  assert.deepEqual(platforms('FONT_LCARS_20'), ['basalt', 'diorite', 'flint']);
+  // Per-language text is one raw resource; the watch loads only the active record.
+  assert.equal(platforms('LANG_DATA'), null, 'every declared platform');
+  assert.ok(media.every(function(resource) {
+    return !resource.targetPlatforms || resource.targetPlatforms.indexOf('aplite') === -1;
+  }), 'no resource is still built for aplite');
   assert.deepEqual(platforms('FONT_LCARS_27'), ['emery']);
   assert.equal(media.some(function(resource) {
     return resource.name === 'FONT_ANTONIO_16' || resource.name === 'FONT_ANTONIO_21';
@@ -142,12 +147,14 @@ test('weather location access is explicit opt-in on first run', function() {
 
 test('production builds retain the midnight step-count refresh', function() {
   var source = fs.readFileSync(path.join(__dirname, '..', 'src', 'c', 'main.c'), 'utf8');
-  var languageStart = source.indexOf('#ifdef LANGUAGE_TESTING',
-    source.indexOf('void handle_tick'));
-  var languageEnd = source.indexOf('#endif', languageStart);
-  var rollover = source.indexOf('static int last_yday', languageStart);
+  var tick = source.indexOf('void handle_tick');
+  var rollover = source.indexOf('static int last_yday', tick);
+  var guard = source.lastIndexOf('#if', rollover);
 
-  assert.ok(languageStart >= 0 && languageEnd >= 0 && rollover > languageEnd,
-    'midnight refresh must not be compiled only under LANGUAGE_TESTING');
+  assert.ok(tick >= 0 && rollover > tick, 'handle_tick keeps the date-rollover check');
+  assert.equal(source.indexOf('LANGUAGE_TESTING'), -1,
+    'no test-only build flag can compile the refresh out');
+  assert.match(source.slice(guard, rollover), /^#ifdef PBL_HEALTH\b/,
+    'the refresh is guarded only by health support');
   assert.match(source.slice(rollover, rollover + 240), /refresh_steps\(\)/);
 });

@@ -84,7 +84,7 @@ test('watch metadata remains unknown unless the platform and firmware are valid'
     platform: 'unknown', firmware: { major: 4 }
   }), false);
   assert.equal(Codec.hasSupportedWatchMetadata({
-    platform: 'aplite', firmware: null
+    platform: 'diorite', firmware: null
   }), false);
   [NaN, Infinity, -1, 4.5].forEach(function(major) {
     assert.equal(Codec.hasSupportedWatchMetadata({
@@ -94,14 +94,14 @@ test('watch metadata remains unknown unless the platform and firmware are valid'
   assert.equal(Codec.hasSupportedWatchMetadata({
     platform: 'basalt', firmware: { major: 4 }, model: 'pebble_time'
   }), true);
-  ['chalk', 'gabbro'].forEach(function(round) {
+  ['aplite', 'chalk', 'gabbro'].forEach(function(dropped) {
     assert.equal(Codec.hasSupportedWatchMetadata({
-      platform: round, firmware: { major: 4 }
-    }), false, round + ' is not supported');
+      platform: dropped, firmware: { major: 4 }
+    }), false, dropped + ' is not supported');
   });
 
   assert.deepEqual(Codec.watchMetadataForClay(null), {
-    platform: 'aplite',
+    platform: 'diorite',
     model: 'unknown',
     firmware: { major: 3, minor: 0, patch: 0 }
   });

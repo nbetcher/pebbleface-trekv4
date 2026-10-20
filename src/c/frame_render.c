@@ -260,7 +260,7 @@ static int argb_dist2(uint8_t a, uint8_t b) {
 
    The glyph sits on top of whatever is under QT_RECT - an LCARS bar on most layouts -
    so a fixed ink colour can vanish: white QT on the white monochrome frame was invisible
-   on aplite/diorite/flint. Each ink pixel is therefore written straight into the
+   on diorite/flint. Each ink pixel is therefore written straight into the
    framebuffer, and any pixel whose backdrop is too close to the ink flips to black or
    white, whichever is further from that backdrop. Over a contrasting backdrop (the
    default colour themes) the glyph is drawn exactly in `color`. */

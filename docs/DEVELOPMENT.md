@@ -24,13 +24,14 @@ see the [README](../README.md).
 
 | Platform | Display | Frame | Health/steps | Heart rate | Color settings |
 | --- | --- | --- | --- | --- | --- |
-| Aplite | 144x168, monochrome rectangle | Vector | No | No | Pebble black/white palette |
 | Basalt | 144x168, color rectangle | Vector | Yes | No | Pebble 64-color palette |
 | Diorite | 144x168, monochrome rectangle | Vector | Yes | Pebble 2 HR model only | Pebble black/white palette |
 | Emery | 200x228, color rectangle | Vector | Yes | Yes | Pebble 64-color palette |
 | Flint | 144x168, monochrome rectangle | Vector | Yes | No | Pebble black/white palette |
 
-Round watches (Pebble Time Round and Pebble Round 2) are not supported.
+Round watches (Pebble Time Round and Pebble Round 2) and the original Pebble and
+Pebble Steel (Aplite) are not supported. Aplite gives a watchface only 24 KB for
+code, data and heap, and Trekv6 left about 3 KB free there.
 
 Clay and the live preview use the connected watch's platform and model metadata
 to hide unsupported choices. The Pebble 2 SE and Pebble 2 HR share the Diorite
@@ -103,10 +104,16 @@ the stripped `clay-custom.gen.js` that the phone actually loads;
 `python3 make_shim.py --check` (also run in CI) reports stale output without
 writing anything.
 
+Watch-side language text (day strips, month names, week and date formats) lives in
+`resources/data/languages.json`. The watch loads only the selected language from
+the `LANG_DATA` raw resource, `resources/data/languages.bin`. After editing the JSON,
+run `python3 make_lang_data.py`; `python3 make_lang_data.py --check` (also run in CI)
+reports a stale `.bin`.
+
 The preview's font data comes from the compiled fonts, not the TTFs: the glyph
 atlas in `src/pkjs/preview-data.js` (and its copy in `clay-custom.js`) and the
 day-strip metrics in `clay-custom.js`. After changing fonts, `font_days`, or the
-day strings, run `pebble build`, then `python3 make_font_data.py`, then
+day strings in `languages.json`, run `pebble build`, then `python3 make_font_data.py`, then
 `python3 make_shim.py`. CI runs `make_font_data.py --check` after its build.
 
 ## Emulator and device testing
@@ -118,7 +125,7 @@ pebble install --emulator basalt
 pebble logs --emulator basalt
 ```
 
-Repeat with `aplite`, `diorite`, `emery`, and `flint` before a release.
+Repeat with `diorite`, `emery`, and `flint` before a release.
 At a minimum, verify the following on each applicable platform:
 
 1. The watchface starts without an AppMessage or persistence error.

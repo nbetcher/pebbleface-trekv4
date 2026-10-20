@@ -63,7 +63,7 @@ function notImplemented(name) {
 /* Row insets packed 4 bits each into a uint32, hence the 8px radius ceiling.
  * PORT OF graphics.c round_top_corner_lookup / round_bottom_corner_lookup.
  * Only reachable with antialiasing OFF (the AA path passes radius 0 here), so
- * on emery these are dormant - they are the aplite/1-bit path, kept because
+ * on emery these are dormant - they are the 1-bit path, kept because
  * they are the literal C and cost ~90 bytes. */
 var ROUND_TOP_CORNER_LOOKUP = [
   0x0, 0x01, 0x01, 0x12, 0x113, 0x123, 0x1234, 0x11235, 0x112346

@@ -16,7 +16,7 @@ var DEFAULT_REFRESH_INTERVAL = 1800000;
 var REFRESH_INTERVALS = [300000, 600000, 1200000, 1800000, 3600000];
 var WEATHER_RETRY_DELAYS = [30000, 120000, 300000];
 var SUPPORTED_PLATFORMS = [
-  'aplite', 'basalt', 'diorite', 'emery', 'flint'
+  'basalt', 'diorite', 'emery', 'flint'
 ];
 
 var INTEGER_FIELDS = {
@@ -157,10 +157,11 @@ function watchMetadataForClay(watchInfo) {
     return watchInfo;
   }
   // Clay's capability predicates dereference activeWatchInfo directly. Give
-  // the framework a safe, least-capable shape, while app.js separately exposes
-  // metadataAvailable=false so the UI never claims this is really an Aplite.
+  // the framework a safe, least-capable shape (a 1-bit Pebble 2 without heart
+  // rate), while app.js separately exposes metadataAvailable=false so the UI
+  // never claims this is really that watch.
   return {
-    platform: 'aplite',
+    platform: 'diorite',
     model: 'unknown',
     firmware: { major: 3, minor: 0, patch: 0 }
   };

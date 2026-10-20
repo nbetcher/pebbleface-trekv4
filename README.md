@@ -37,8 +37,8 @@ the watch **pixel for pixel**. Other watches get a close vector preview.
 - **Make it yours.** Pick one of 12 classic themes, or build your own palette from
   the frame's three regions, two text colors, the background, the Bluetooth symbol
   and the battery bars.
-- **Every rectangular Pebble.** One design, tuned to each screen, from the
-  original Pebble to Pebble Time 2.
+- **Four watch families.** One design, tuned to each screen: Pebble Time,
+  Pebble 2, Pebble 2 Duo and Pebble Time 2.
 - **Red Alert.** Nine Star Trek-themed disconnect vibrations, optional repeats
   and an LCARS popup you shake away.
 - **Weather with no account.** Powered by Open-Meteo. Location stays off until
@@ -72,10 +72,11 @@ Upgrading from Trekv4? It installs over it, and your settings carry over.
 
 ## Supported watches
 
-Pebble and Pebble Steel · Pebble Time and Time Steel · Pebble 2 SE and HR ·
-Pebble 2 Duo · Pebble Time 2
+Pebble Time and Time Steel · Pebble 2 SE and HR · Pebble 2 Duo · Pebble Time 2
 
-Round watches are not supported. Pebble Time Round owners should stay on Trekv4 5.2.
+The original Pebble and Pebble Steel are no longer supported: their memory is too
+small for Trekv6. Round watches are not supported either. Owners of those watches
+can keep the version they already have.
 
 ## Credits
 
@@ -88,10 +89,10 @@ languages. Trekv6 is a ground-up rebuild. About 96% of today's source is new.
 | Frame    | A full-screen picture per theme | Vector shapes drawn live on the watch              |
 | Color    | 12 fixed themes                 | 12 themes, or your own palette                     |
 | Settings | A plain form                    | Live, pixel-exact preview with tap-to-recolor      |
-| Watches  | 4 platforms, including Round    | Every rectangular Pebble, including Time 2 and 2 Duo |
+| Watches  | 4 platforms, including Round    | 4 platforms, including Time 2 and 2 Duo           |
 | Weather  | Yahoo (since shut down)         | Open-Meteo, no key needed                          |
 | Alerts   | A single vibration              | 9 themed patterns, repeats and an LCARS popup      |
-| Testing  | None                            | 129 automated tests                                |
+| Testing  | None                            | 134 automated tests                                |
 
 ## Support
 

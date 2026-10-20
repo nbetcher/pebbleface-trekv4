@@ -6,8 +6,8 @@
  *
  * On emery the captured framebuffer is always GBitmapFormat8Bit, so:
  *   - get_pixel()/set_pixel()'s GBitmapFormat1Bit / 1BitPalette branches compile
- *     on emery but are unreachable (effects.c:28/41); they are aplite's real
- *     path and are deliberately NOT translated in phase 1. See DEVIATIONS below.
+ *     on emery but are unreachable (effects.c:28/41); they are the 1-bit
+ *     watches' real path and are deliberately NOT translated in phase 1. See DEVIATIONS below.
  *
  * DEVIATIONS from the C, all deliberate:
  *  1. The 1-bit pixel branches are omitted (dead on emery, and

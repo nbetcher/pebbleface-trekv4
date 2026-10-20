@@ -181,7 +181,6 @@
                     "file": "fonts/LCARS.ttf",
                     "name": "FONT_LCARS_68",
                     "targetPlatforms": [
-                        "aplite",
                         "basalt",
                         "diorite",
                         "flint"
@@ -192,7 +191,6 @@
                     "file": "fonts/LCARS.ttf",
                     "name": "FONT_LCARSB_19",
                     "targetPlatforms": [
-                        "aplite",
                         "basalt",
                         "diorite",
                         "flint"
@@ -204,7 +202,6 @@
                     "file": "fonts/LCARS.ttf",
                     "name": "FONT_LCARS_18",
                     "targetPlatforms": [
-                        "aplite",
                         "basalt",
                         "diorite",
                         "flint"
@@ -241,7 +238,6 @@
                     "file": "fonts/LCARS.ttf",
                     "name": "FONT_LCARS_20",
                     "targetPlatforms": [
-                        "aplite",
                         "basalt",
                         "diorite",
                         "flint"
@@ -252,7 +248,6 @@
                     "file": "fonts/Antonio-SemiBold.ttf",
                     "name": "FONT_ANTONIO_17",
                     "targetPlatforms": [
-                        "aplite",
                         "basalt",
                         "diorite",
                         "flint"
@@ -319,7 +314,6 @@
                     "file": "fonts/LCARS.ttf",
                     "name": "FONT_LCARSA_21",
                     "targetPlatforms": [
-                        "aplite",
                         "basalt",
                         "diorite",
                         "flint"
@@ -331,7 +325,6 @@
                     "file": "fonts/LCARS.ttf",
                     "name": "FONT_LCARSP_14",
                     "targetPlatforms": [
-                        "aplite",
                         "basalt",
                         "diorite",
                         "flint"
@@ -344,18 +337,22 @@
                     "file": "fonts/LCARS.ttf",
                     "name": "FONT_LCARS_12",
                     "targetPlatforms": [
-                        "aplite",
                         "basalt",
                         "diorite",
                         "flint"
                     ],
                     "type": "font"
+                },
+                {
+                    "file": "data/languages.bin",
+                    "name": "LANG_DATA",
+                    "targetPlatforms": null,
+                    "type": "raw"
                 }
             ]
         },
         "sdkVersion": "3",
         "targetPlatforms": [
-            "aplite",
             "basalt",
             "diorite",
             "emery",

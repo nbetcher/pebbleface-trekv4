@@ -91,18 +91,18 @@ function loadApp(initialStorage, initialWatch) {
 
 test('Settings response stays with its origin profile when the active watch changes', function() {
   var basalt = { token: 'watch-a', info: watch('basalt', 'pebble_time') };
-  var aplite = { token: 'watch-b', info: watch('aplite', 'pebble_original') };
+  var mono = { token: 'watch-b', info: watch('diorite', 'pebble_2_se') };
   var basaltKey = PROFILE_PREFIX + encodeURIComponent(basalt.token);
-  var apliteKey = PROFILE_PREFIX + encodeURIComponent(aplite.token);
+  var monoKey = PROFILE_PREFIX + encodeURIComponent(mono.token);
   var harness = loadApp({
     'trekv4-settings-profile-version': '1',
     [basaltKey]: profile({ background: '1', othertextcol: 0xAA55FF }),
-    [apliteKey]: profile({ background: '2', othertextcol: 0xFFFFFF })
+    [monoKey]: profile({ background: '2', othertextcol: 0xFFFFFF })
   }, basalt);
 
   harness.events.ready();
   harness.events.showConfiguration();
-  harness.setWatch(aplite);
+  harness.setWatch(mono);
   // A reconnect can replace the globals while the old watch's page is open.
   harness.events.ready();
   harness.events.webviewclosed({
@@ -111,12 +111,12 @@ test('Settings response stays with its origin profile when the active watch chan
 
   assert.equal(JSON.parse(harness.storage[basaltKey]).background, '8');
   assert.equal(JSON.parse(harness.storage[basaltKey]).othertextcol, 0xFF0000);
-  assert.equal(JSON.parse(harness.storage[apliteKey]).background, '2');
-  assert.equal(JSON.parse(harness.storage[apliteKey]).othertextcol, 0xFFFFFF);
+  assert.equal(JSON.parse(harness.storage[monoKey]).background, '2');
+  assert.equal(JSON.parse(harness.storage[monoKey]).othertextcol, 0xFFFFFF);
   assert.equal(JSON.parse(harness.storage['clay-settings']).background, '2');
   assert.equal(harness.enqueued.at(-1).dictionary[messageKeys.background], 2);
   assert.equal(harness.enqueued.at(-1).dictionary[messageKeys.othertextcol], 0xFFFFFF);
-  assert.equal(harness.clay().meta.watchToken, aplite.token);
+  assert.equal(harness.clay().meta.watchToken, mono.token);
 });
 
 test('Settings response still updates and reconciles the originating active watch', function() {
@@ -138,23 +138,23 @@ test('Settings response still updates and reconciles the originating active watc
 
 test('closing without saving still reconciles a watch changed during Settings', function() {
   var basalt = { token: 'watch-a', info: watch('basalt', 'pebble_time') };
-  var aplite = { token: 'watch-b', info: watch('aplite', 'pebble_original') };
+  var mono = { token: 'watch-b', info: watch('diorite', 'pebble_2_se') };
   var basaltKey = PROFILE_PREFIX + encodeURIComponent(basalt.token);
-  var apliteKey = PROFILE_PREFIX + encodeURIComponent(aplite.token);
+  var monoKey = PROFILE_PREFIX + encodeURIComponent(mono.token);
   var harness = loadApp({
     'trekv4-settings-profile-version': '1',
     [basaltKey]: profile({ background: '1' }),
-    [apliteKey]: profile({ background: '2' })
+    [monoKey]: profile({ background: '2' })
   }, basalt);
 
   harness.events.ready();
   harness.events.showConfiguration();
-  harness.setWatch(aplite);
+  harness.setWatch(mono);
   harness.events.webviewclosed({ response: '' });
 
   assert.equal(JSON.parse(harness.storage[basaltKey]).background, '1');
-  assert.equal(JSON.parse(harness.storage[apliteKey]).background, '2');
+  assert.equal(JSON.parse(harness.storage[monoKey]).background, '2');
   assert.equal(JSON.parse(harness.storage['clay-settings']).background, '2');
   assert.equal(harness.enqueued.at(-1).dictionary[messageKeys.background], 2);
-  assert.equal(harness.clay().meta.watchToken, aplite.token);
+  assert.equal(harness.clay().meta.watchToken, mono.token);
 });

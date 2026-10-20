@@ -131,6 +131,7 @@ jobs:
         run: |
           npm run check
           python3 make_shim.py --check
+          python3 make_lang_data.py --check
           npm test
 
       - name: Build PBW

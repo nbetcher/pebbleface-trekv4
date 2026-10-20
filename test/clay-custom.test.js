@@ -6,6 +6,7 @@ var fs = require('fs');
 var path = require('path');
 var config = require('../src/pkjs/config.js');
 var clayCustom = require('../src/pkjs/clay-custom.js');
+var Codec = require('../src/pkjs/settings-codec.js');
 var includesCapability = require('@rebble/clay/src/scripts/lib/utils')
   .includesCapability;
 
@@ -273,8 +274,6 @@ function frameFills(source) {
 
 test('Clay exposes only settings supported by every declared Pebble class', function() {
   var cases = [
-    { platform: 'aplite', model: 'pebble', geometry: '144 168', frame: 13,
-      steps: false, heart: false, label: 'Pebble / Pebble Steel' },
     { platform: 'basalt', model: 'pebble_time', geometry: '144 168', frame: 13,
       steps: true, heart: false, label: 'Pebble Time / Time Steel' },
     { platform: 'diorite', model: 'pebble_2_se', geometry: '144 168', frame: 13,
@@ -382,7 +381,7 @@ test('nearby taps resolve to tiny preview elements without immediately changing 
 });
 
 test('monochrome preset seeding uses the exact white frame shown by the B/W picker', function() {
-  var harness = buildHarness('aplite', 'pebble');
+  var harness = buildHarness('diorite', 'pebble_2_se');
   var before = frameFills(harness.canvas.innerHTML);
   var index;
 
@@ -436,7 +435,7 @@ test('drawn popup text colors are independent preview targets', function() {
 
 test('every visible color control has a matching tappable preview target', function() {
   [
-    ['aplite', 'pebble'], ['basalt', 'pebble_time'], ['diorite', 'pebble_2_se'],
+    ['basalt', 'pebble_time'], ['diorite', 'pebble_2_se'],
     ['emery', 'pebble_time_2'], ['flint', 'pebble_2_duo']
   ].forEach(function(device) {
     var harness = buildHarness(device[0], device[1]);
@@ -516,17 +515,21 @@ test('interactive SVG and Pebble palette accessibility avoid hidden keyboard tra
   'remaining bars stay tappable without duplicating screen-reader controls');
 });
 
-test('fallback watch metadata stays conservative without claiming an Aplite model', function() {
-  var harness = buildHarness('aplite', 'pebble', false);
+test('fallback watch metadata stays conservative without claiming a real model', function() {
+  // app.js hands Clay the codec's fallback shape when the phone reports no usable
+  // metadata: a 1-bit Pebble 2 with an unknown model, so no heart-rate controls.
+  var fallback = Codec.watchMetadataForClay(null);
+  var harness = buildHarness(fallback.platform, fallback.model, false);
+  var heart = harness.get('bottom_left');
 
   assert.match(harness.get('device_summary').get(), /Watch metadata is unavailable/);
   assert.match(harness.canvas.innerHTML, /viewBox="0 0 144 168"/);
-  assert.equal(harness.get('bottom_right'), null);
+  assert.equal(Boolean(heart && heart.visible), false);
 });
 
 test('every platform preview has complete finite battery geometry', function() {
   [
-    ['aplite', 'pebble'], ['basalt', 'pebble_time'], ['diorite', 'pebble_2_se'],
+    ['basalt', 'pebble_time'], ['diorite', 'pebble_2_se'],
     ['emery', 'pebble_time_2'], ['flint', 'pebble_2_duo']
   ].forEach(function(device) {
     var html = buildHarness(device[0], device[1]).canvas.innerHTML;
@@ -620,13 +623,12 @@ function todayBox(platform, model, language, day) {
 }
 
 test('preview day strings are the watch strings, double spaces included', function() {
-  var source = fs.readFileSync(path.join(__dirname, '..', 'src', 'c', 'languages.h'), 'utf8');
-  function lines(name) {
-    var start = source.indexOf(name + '[]');
-    return source.slice(start, source.indexOf('};', start)).match(/"[^"]*"/g)
-      .map(function(q) { return q.slice(1, -1); });
+  var languages = JSON.parse(fs.readFileSync(
+    path.join(__dirname, '..', 'resources', 'data', 'languages.json'), 'utf8')).languages;
+  function lines(field) {
+    return languages.map(function(language) { return language[field]; });
   }
-  [['1', lines('day_lines2')], ['0', lines('day_lines')]].forEach(function(week) {
+  [['1', lines('days_sunday_first')], ['0', lines('days_monday_first')]].forEach(function(week) {
     week[1].forEach(function(expected, language) {
       var harness = buildHarness('basalt', 'pebble_time');
       harness.set('startday_status', week[0]);

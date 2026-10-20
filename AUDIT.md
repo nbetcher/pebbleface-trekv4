@@ -5,8 +5,9 @@ Audited release: 5.2.0
 
 > [!NOTE]
 > This is a point-in-time record. Since it was written, round watches (Chalk and
-> Gabbro) have been dropped, and the build, test and release instructions it
-> refers to as "README" now live in [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md).
+> Gabbro) and the original Pebble (Aplite) have been dropped, which retires R-02.
+> The build, test and release instructions it refers to as "README" now live in
+> [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md).
 
 ## Verdict
 

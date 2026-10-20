@@ -30,7 +30,7 @@ static const FrameSeg FRAME_SEGS[FRAME_NSEG] = {
   { 0,   2, 200,   6,  15, { 0, 0, 0, 0, 0, 0}, { 0, 0, 0, 0,-4,-4}, 11 },
   { 0,   2, 216,   6,   6, { 0, 0, 2, 2, 0, 0}, { 0, 0, 0, 1,-4,-4}, 12 },
 };
-#else  // 144x168 (basalt / aplite / diorite / flint)
+#else  // 144x168 (basalt / diorite / flint)
 static const FrameSeg FRAME_SEGS[FRAME_NSEG] = {
   { 1,   2,  11,  23,  16, {10,10, 4, 0,10, 6}, { 0, 0, 0, 0, 0, 0}, 0 },
   { 0,  27,  11,  62,   6, { 0, 0, 0, 0, 0, 0}, { 0, 0, 0, 0,-4,-4}, 1 },
