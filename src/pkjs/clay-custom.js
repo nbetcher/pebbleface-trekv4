@@ -3276,7 +3276,7 @@ version: TREK_SHIM_VERSION
     var time = (use24h ? pad(hour, 2) : hour12) + ":" + pad(minute, 2);
     var upper = seconds ? pad(second, 2) : (use24h ? "" : (hour >= 12 ? "PM" : "AM"));
     var groupStart = "<g>";
-    var result = "<svg id=\"trek-preview-svg\" aria-label=\"Live TrekV4 watchface preview. Tap a drawn element to change its color.\" " +
+    var result = "<svg id=\"trek-preview-svg\" aria-label=\"Live Trekv6 watchface preview. Tap a drawn element to change its color.\" " +
       "viewBox=\"0 0 " + width + " " + height + "\" xmlns=\"http://www.w3.org/2000/svg\">";
     var layout;
 
@@ -3558,7 +3558,7 @@ version: TREK_SHIM_VERSION
   function hitLayerSvg(result) {
     var out = "<svg id=\"trek-preview-svg\" xmlns=\"http://www.w3.org/2000/svg\" " +
       "viewBox=\"0 0 " + result.w + " " + result.h + "\" role=\"img\" " +
-      "aria-label=\"Live TrekV4 watchface preview. Tap a drawn element to change its color.\">";
+      "aria-label=\"Live Trekv6 watchface preview. Tap a drawn element to change its color.\">";
     var inverted = bool(get("invert", false));
     var targets = result.targets;
     var i;

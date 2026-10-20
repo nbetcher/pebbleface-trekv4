@@ -1,5 +1,5 @@
 /*
- * 60-text.js -- TrekV4 preview shim: text layout, glyph metrics and glyph rendering.
+ * 60-text.js -- Trekv6 preview shim: text layout, glyph metrics and glyph rendering.
  *
  * SPDX-License-Identifier: Apache-2.0
  * SPDX-FileCopyrightText: 2024 Google LLC

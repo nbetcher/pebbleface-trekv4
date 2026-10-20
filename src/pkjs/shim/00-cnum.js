@@ -1,4 +1,4 @@
-/* TrekV4 settings-preview emulation layer - C integer semantics.
+/* Trekv6 settings-preview emulation layer - C integer semantics.
  *
  * SPDX-License-Identifier: Apache-2.0
  * Portions translated from PebbleOS (google/pebble, coredevices/PebbleOS),

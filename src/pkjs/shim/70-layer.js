@@ -1,4 +1,4 @@
-/* TrekV4 settings-preview emulation layer - the layer tree.
+/* Trekv6 settings-preview emulation layer - the layer tree.
  *
  * SPDX-License-Identifier: Apache-2.0
  * SPDX-FileCopyrightText: 2024 Google LLC

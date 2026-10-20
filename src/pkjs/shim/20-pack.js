@@ -1,4 +1,4 @@
-/* TrekV4 settings-preview emulation layer - generated-pack readers.
+/* Trekv6 settings-preview emulation layer - generated-pack readers.
  *
  * The pack is DATA, not code. It arrives via clay.meta.userData.gfx (or, if
  * the meta round-trip gate fails, a generated marker block) and holds every

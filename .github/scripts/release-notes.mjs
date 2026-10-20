@@ -1,4 +1,4 @@
-// Drafts Markdown release notes for a Trekv4 release with the Claude API.
+// Drafts Markdown release notes for a Trekv6 release with the Claude API.
 //
 // Used by .github/workflows/build-pbw.yml only when no hand-written notes exist
 // in .github/release-notes/. Run from the repository root (it shells out to
@@ -53,7 +53,7 @@ if (diff.length > MAX_DIFF_CHARS) {
   console.log(`::warning::Diff truncated to ${MAX_DIFF_CHARS} characters for the notes prompt`);
 }
 
-const system = `You write GitHub release notes for Trekv4, an LCARS-style watchface for Pebble and Rebble watches (native C on the watch, PebbleKit JS + Clay settings page on the phone).
+const system = `You write GitHub release notes for Trekv6, an LCARS-style watchface for Pebble and Rebble watches (native C on the watch, PebbleKit JS + Clay settings page on the phone).
 
 Readers are mostly watch owners; a few are developers. Write Markdown only, with no preamble or sign-off:
 - Start with a one- or two-sentence summary of the release.

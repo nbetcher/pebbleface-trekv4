@@ -1,4 +1,4 @@
-# Builds the Trekv4 PBW and (optionally) publishes it as a tagged GitHub release.
+# Builds the Trekv6 PBW and (optionally) publishes it as a tagged GitHub release.
 #
 # Releases are cut manually for now: Actions -> "Build PBW" -> Run workflow.
 # The release version is NOT an input - it is read from package.json's "version"
@@ -69,7 +69,7 @@ jobs:
             exit 1
           fi
           release="$version"
-          title="Trekv4 v$version"
+          title="Trekv6 v$version"
           if [ -n "$SUFFIX" ]; then
             if ! [[ "$SUFFIX" =~ ^(rc|beta|alpha)([1-9][0-9]*)$ ]]; then
               echo "::error::prerelease '$SUFFIX' must look like rc1, beta2 or alpha3"
@@ -81,7 +81,7 @@ jobs:
               alpha) stage="Alpha" ;;
             esac
             release="$version-$SUFFIX"
-            title="Trekv4 v$release ($stage ${BASH_REMATCH[2]})"
+            title="Trekv6 v$release ($stage ${BASH_REMATCH[2]})"
             echo "stage=$stage ${BASH_REMATCH[2]}" >> "$GITHUB_OUTPUT"
           fi
           echo "version=$version" >> "$GITHUB_OUTPUT"
@@ -153,13 +153,13 @@ jobs:
             exit 1
           fi
           mkdir -p dist
-          cp "$built" "dist/trekv4-v${RELEASE}.pbw"
-          echo "pbw=dist/trekv4-v${RELEASE}.pbw" >> "$GITHUB_OUTPUT"
+          cp "$built" "dist/trekv6-v${RELEASE}.pbw"
+          echo "pbw=dist/trekv6-v${RELEASE}.pbw" >> "$GITHUB_OUTPUT"
 
       - name: Upload PBW artifact
         uses: actions/upload-artifact@v4
         with:
-          name: trekv4-v${{ steps.version.outputs.release }}
+          name: trekv6-v${{ steps.version.outputs.release }}
           path: ${{ steps.stage.outputs.pbw }}
           if-no-files-found: error
 
@@ -198,7 +198,7 @@ jobs:
           {
             if [ -n "$STAGE" ]; then
               echo "> [!IMPORTANT]"
-              echo "> **$STAGE** of Trekv4 $VERSION. This is a pre-release for testing; please report any problems in Issues."
+              echo "> **$STAGE** of Trekv6 $VERSION. This is a pre-release for testing; please report any problems in Issues."
               echo
             fi
             cat "$body"

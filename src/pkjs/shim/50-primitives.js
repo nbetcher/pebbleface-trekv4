@@ -1,4 +1,4 @@
-/* TrekV4 settings-preview emulation layer - drawing primitives.
+/* Trekv6 settings-preview emulation layer - drawing primitives.
  *
  * SPDX-License-Identifier: Apache-2.0
  * SPDX-FileCopyrightText: 2024 Google LLC

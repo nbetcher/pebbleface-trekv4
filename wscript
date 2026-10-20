@@ -1,5 +1,5 @@
 #
-# Pebble SDK build rules for TrekV4.
+# Pebble SDK build rules for Trekv6.
 #
 # This follows the SDK 4.17 native-app template while retaining this project's
 # PebbleKit JS entry point. JavaScript is parsed by the SDK bundler; unlike the

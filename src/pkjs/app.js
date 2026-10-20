@@ -12,6 +12,7 @@ var createMessageQueue = require('./message-queue.js');
 var messageKeys = require('message_keys');
 
 var SETTINGS_STORAGE_KEY = 'clay-settings';
+// Storage keys keep the Trekv4 name so settings survive the rename to Trekv6.
 var PROFILE_STORAGE_PREFIX = 'trekv4-settings:';
 var PROFILE_MIGRATION_KEY = 'trekv4-settings-profile-version';
 var REQUEST_TIMEOUT = 20000;
@@ -567,5 +568,5 @@ Pebble.addEventListener('ready', function() {
   outboundQueue.resume();
   updateWeather();
   scheduleWeather();
-  console.log('TrekV4 PebbleKit JS ready');
+  console.log('Trekv6 PebbleKit JS ready');
 });

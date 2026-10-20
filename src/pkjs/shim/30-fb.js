@@ -1,4 +1,4 @@
-/* TrekV4 settings-preview emulation layer - the framebuffer.
+/* Trekv6 settings-preview emulation layer - the framebuffer.
  *
  * fb.d is a Uint8Array of ARGB8 bytes, one per pixel, 200 bytes per row on
  * emery, no padding - bit-identical to the real GBitmapFormat8Bit framebuffer

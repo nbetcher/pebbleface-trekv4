@@ -8,7 +8,7 @@
         "lcars"
     ],
     "license": "MIT",
-    "name": "trekv4",
+    "name": "trekv6",
     "private": true,
     "pebble": {
         "capabilities": [
@@ -16,7 +16,7 @@
             "configurable",
             "health"
         ],
-        "displayName": "Trekv4",
+        "displayName": "Trekv6",
         "enableMultiJS": true,
         "messageKeys": {
             "background": 9,
@@ -54,7 +54,7 @@
         "resources": {
             "media": [
                 {
-                    "file": "images/menu_icon_trekv4.png",
+                    "file": "images/menu_icon_trekv6.png",
                     "menuIcon": true,
                     "name": "IMAGE_MENU_ICON",
                     "targetPlatforms": null,

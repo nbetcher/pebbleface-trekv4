@@ -1,4 +1,4 @@
-/* TrekV4 settings-preview emulation layer - colour and geometry types.
+/* Trekv6 settings-preview emulation layer - colour and geometry types.
  *
  * SPDX-License-Identifier: Apache-2.0
  * SPDX-FileCopyrightText: 2024 Google LLC

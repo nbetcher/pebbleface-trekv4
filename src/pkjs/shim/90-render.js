@@ -1,4 +1,4 @@
-/* TrekV4 settings-preview emulation layer - the single public entry point.
+/* Trekv6 settings-preview emulation layer - the single public entry point.
  *
  * renderFace(env) runs the whole emery pipeline of spec section 4.2 and hands
  * back a finished framebuffer, its RGBA expansion, the tag map and the list of

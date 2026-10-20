@@ -66,7 +66,7 @@ var monochromeThemes = [
 var config = [
   {
     "type": "heading",
-    "defaultValue": "TrekV4 Settings",
+    "defaultValue": "Trekv6 Settings",
     "size": 2
   },
   {
@@ -313,7 +313,7 @@ var config = [
         "type": "toggle",
         "messageKey": "use_gps",
         "label": "Use phone GPS",
-        "description": "Off by default. Enable to grant location access; the phone sends coordinates to Open-Meteo for the current forecast and TrekV4 does not retain them.",
+        "description": "Off by default. Enable to grant location access; the phone sends coordinates to Open-Meteo for the current forecast and Trekv6 does not retain them.",
         "defaultValue": false
       },
       {
@@ -491,7 +491,7 @@ var config = [
   },
   {
     "type": "text",
-    "defaultValue": "<small>Enjoying Trekv4? <a href='https://buymeacoffee.com/nbetcher'>Buy me a coffee</a>. Inspired by Mark Reed's Trekv3.</small>"
+    "defaultValue": "<small>Enjoying Trekv6? <a href='https://buymeacoffee.com/nbetcher'>Buy me a coffee</a>. Inspired by Mark Reed's Trekv3.</small>"
   },
   {
     "type": "text",

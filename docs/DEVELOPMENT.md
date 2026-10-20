@@ -1,6 +1,6 @@
-# Developing Trekv4
+# Developing Trekv6
 
-Everything needed to build, test and release Trekv4. For what the watchface is,
+Everything needed to build, test and release Trekv6. For what the watchface is,
 see the [README](../README.md).
 
 ## Architecture
@@ -152,13 +152,13 @@ The release version is taken from `"version"` in `package.json`, which the SDK
 also stamps into the PBW. To cut a release, bump that value (and
 `package-lock.json`), commit, then run the workflow. With **release** checked
 (the default) it creates the `v<version>` tag and a GitHub release carrying
-`trekv4-v<version>.pbw`; unchecked, it only uploads the PBW as a build artifact.
+`trekv6-v<version>.pbw`; unchecked, it only uploads the PBW as a build artifact.
 The workflow refuses to reuse an existing tag. Emulator checks remain manual, so
 walk the platform list above before publishing.
 
 To publish a pre-release, fill in **prerelease** with `rcN`, `betaN`, or `alphaN`.
 For example, `rc1` with version 6.0.0 publishes `v6.0.0-rc1` as a GitHub
-pre-release titled "Release Candidate 1" and attaches `trekv4-v6.0.0-rc1.pbw`.
+pre-release titled "Release Candidate 1" and attaches `trekv6-v6.0.0-rc1.pbw`.
 The suffix appears only in the tag, title, and file name. The SDK rejects it in
 `package.json`, so the PBW itself still reports 6.0.0, and the final release can
 be cut later from the same version by leaving **prerelease** empty.
