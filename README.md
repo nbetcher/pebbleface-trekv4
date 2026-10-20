@@ -4,7 +4,7 @@
 
 **An LCARS watchface for Pebble, drawn live in code.**
 
-<img src="docs/images/faces.png" alt="Trekv6 on Pebble Time 2 in six palettes: Gamma Shift, Ten Forward, Risa, Château, Tricorder and Romulan" width="100%">
+<img src="docs/images/faces.png" alt="Trekv6 on Pebble Time 2 in six palettes: LCARS, Klingon, Romulan, Borg, Cardassian and Original Series" width="100%">
 
 [**Download**](https://github.com/nbetcher/pebbleface-trekv4/releases/latest) &nbsp;·&nbsp;
 [What's new](.github/release-notes/v6.0.0.md) &nbsp;·&nbsp;
@@ -47,18 +47,19 @@ the watch **pixel for pixel**. Other watches get a close vector preview.
 
 ## Palettes to try
 
-Every face above is a custom palette. Choose **Custom** in Settings and tap your way to:
+Every face above is a custom palette inspired by a corner of the Star Trek universe.
+Choose **Custom** in Settings and tap your way to:
 
-| Palette         | Frame: top · middle · bottom   | Text · secondary  | Background |
-| --------------- | ------------------------------ | ----------------- | ---------- |
-| **Gamma Shift** | Graphite · graphite · orange   | White · silver    | Black      |
-| **Ten Forward** | Slate · slate · apricot        | Apricot · lavender | Navy      |
-| **Risa**        | Orange · silver · cobalt       | Black · cobalt    | White      |
-| **Château**     | Wine · ochre · cream           | Cream · dusty rose | Black     |
-| **Tricorder**   | Black (no frame)               | Amber · amber     | Black      |
-| **Romulan**     | Teal · jade · olive            | Mint · sea green  | Black      |
+| Palette             | Frame: top · middle · bottom                  | Text · secondary      | Inspired by                       |
+| ------------------- | --------------------------------------------- | --------------------- | --------------------------------- |
+| **LCARS**           | Peach · lilac · periwinkle                    | Orange · periwinkle   | The Next Generation's consoles    |
+| **Klingon**         | Blood red · oxblood · gold                    | Red · gold            | Bird-of-Prey displays             |
+| **Romulan**         | Deep green · jade · imperial gold             | Bright green · gold   | Warbird green, imperial gold        |
+| **Borg**            | Charcoal, all three                           | Borg green · green    | Cube interiors and the red eyepiece laser |
+| **Cardassian**      | Bronze · olive · amber                        | Yellow · amber        | Terok Nor's screens               |
+| **Original Series** | Command gold · sciences blue · operations red | White · gold          | The 1960s uniforms                |
 
-<p align="center"><img src="docs/images/disconnect.png" alt="The LCARS Bluetooth-disconnected popup in the Gamma Shift palette" width="240"><br><sub>The disconnect alert, in Gamma Shift</sub></p>
+<p align="center"><img src="docs/images/disconnect.png" alt="The LCARS Bluetooth-disconnected popup in Red Alert colors" width="240"><br><sub>Losing your phone puts the bridge on Red Alert</sub></p>
 
 ## Install
 
