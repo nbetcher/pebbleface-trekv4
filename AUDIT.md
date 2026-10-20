@@ -3,6 +3,11 @@
 Audit date: 2026-08-13  
 Audited release: 5.2.0
 
+> [!NOTE]
+> This is a point-in-time record. Since it was written, round watches (Chalk and
+> Gabbro) have been dropped, and the build, test and release instructions it
+> refers to as "README" now live in [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md).
+
 ## Verdict
 
 The integrated code has no known release-blocking correctness or dependency

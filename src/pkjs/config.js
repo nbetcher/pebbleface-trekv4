@@ -491,7 +491,7 @@ var config = [
   },
   {
     "type": "text",
-    "defaultValue": "<small>If TrekV4 is useful to you, you can <a href='https://www.paypal.me/markchopsreed'>support its original author</a>.</small>"
+    "defaultValue": "<small>Enjoying Trekv4? <a href='https://buymeacoffee.com/nbetcher'>Buy me a coffee</a>. Inspired by Mark Reed's Trekv3.</small>"
   },
   {
     "type": "text",

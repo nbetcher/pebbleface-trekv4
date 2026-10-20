@@ -43,7 +43,7 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  # Keep in step with README.md "Prerequisites" - the verified tool/SDK pair.
+  # Keep in step with docs/DEVELOPMENT.md "Prerequisites" - the verified tool/SDK pair.
   PEBBLE_TOOL_VERSION: "5.0.40"
   PEBBLE_SDK_VERSION: "4.33.1"
   PYTHON_VERSION: "3.13"
