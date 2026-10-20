@@ -110,6 +110,12 @@ the `LANG_DATA` raw resource, `resources/data/languages.bin`. After editing the 
 run `python3 make_lang_data.py`; `python3 make_lang_data.py --check` (also run in CI)
 reports a stale `.bin`.
 
+The Pebble font compiler keeps at most 256 glyphs per font, in codepoint order, so
+the Antonio date fonts carry a `characterRegex` in `package.json` listing printable
+ASCII plus the accented letters the languages use. If a language gains a new
+letter, add it to both Antonio regexes; `test/font-coverage.test.js` fails until
+you do.
+
 The preview's font data comes from the compiled fonts, not the TTFs: the glyph
 atlas in `src/pkjs/preview-data.js` (and its copy in `clay-custom.js`) and the
 day-strip metrics in `clay-custom.js`. After changing fonts, `font_days`, or the

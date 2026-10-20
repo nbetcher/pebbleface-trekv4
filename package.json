@@ -227,6 +227,7 @@
                     "type": "font"
                 },
                 {
+                    "characterRegex": "[ -~ÁÇÚáäåéíöøúûýČěğŘřŞŠž]",
                     "file": "fonts/Antonio-SemiBold.ttf",
                     "name": "FONT_ANTONIO_24",
                     "targetPlatforms": [
@@ -245,6 +246,7 @@
                     "type": "font"
                 },
                 {
+                    "characterRegex": "[ -~ÁÇÚáäåéíöøúûýČěğŘřŞŠž]",
                     "file": "fonts/Antonio-SemiBold.ttf",
                     "name": "FONT_ANTONIO_17",
                     "targetPlatforms": [

@@ -15,7 +15,9 @@ from the compiled fonts rather than from the TTFs:
 
 Each atlas entry keeps the codepoints it already has. The day-strip font (and any
 font new to the pack) also gets every character of the day strings in
-resources/data/languages.json. A newly added font starts from the largest existing text subset.
+resources/data/languages.json, and the fonts that draw the date (font_date, and
+small_batt for the heart-rate bracket layout) get every character of the month
+names and week/date formats. A newly added font starts from the largest existing text subset.
 Codepoints the font does not contain are dropped; the watch and the preview then
 both draw the wildcard glyph.
 
@@ -150,6 +152,29 @@ def day_chars():
     return set("".join(l["days_monday_first"] + l["days_sunday_first"] for l in languages))
 
 
+def date_chars():
+    """Characters the date and week text can contain, minus strftime directives."""
+    with open(LANGUAGES_JSON, encoding="utf-8") as f:
+        languages = json.load(f)["languages"]
+    text = "".join("".join(l["months"]) + l["week_format"] + l["date_format"]
+                   for l in languages)
+    return set(re.sub(r"%[A-Za-z]", "", text)) | set("0123456789")
+
+
+def date_fonts():
+    """Time 2 resources that draw date text: font_date and small_batt."""
+    with open(MAIN_C) as f:
+        src = f.read()
+    names = set()
+    for var in ("font_date", "small_batt"):
+        found = re.findall(var + r"\s*=\s*fonts_load_custom_font\(\s*resource_get_handle\("
+                           r"\s*RESOURCE_ID_(\w+)", src)
+        if len(found) != 2:
+            raise ValueError("expected two %s loads (emery, then the rest) in main.c" % var)
+        names.add(found[0])
+    return names
+
+
 def day_fonts():
     """(Time 2 font_days resource, 144px font_days resource) from main.c."""
     with open(MAIN_C) as f:
@@ -184,6 +209,8 @@ def rebuild_atlas(pack, emery, days_font_key):
     wanted = pack["emery"]["layout"]["FONTS"]            # resource name -> atlas key
     largest = max((cps for _k, _e, cps in fonts), key=len, default=[])
     days = {ord(c) for c in day_chars()}
+    dates = {ord(c) for c in date_chars()}
+    date_keys = {wanted[r] for r in date_fonts() if r in wanted}
     entries = []
     for key in order + [k for k in wanted.values() if k not in order]:
         resource = next((r for r, k in wanted.items() if k == key), None)
@@ -193,6 +220,8 @@ def rebuild_atlas(pack, emery, days_font_key):
         cps = set(by_key[key][1]) if key in by_key else set(largest) | {wildcard}
         if key == days_font_key or key not in by_key:
             cps |= days
+        if key in date_keys:
+            cps |= dates
         entries.append(atlas_entry(key, max_height, wildcard, glyphs,
                                    sorted(cp for cp in cps if cp in glyphs)))
     blob = b"PFA1" + bytes([len(entries)]) + b"".join(entries)

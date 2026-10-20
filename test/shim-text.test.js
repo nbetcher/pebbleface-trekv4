@@ -123,7 +123,8 @@ test('codepoints Antonio was subset out of fall back to the wildcard box, as on 
     var font = FONTS.ANTONIO_21;
     var wcAdv = T.pgAdvance(font, WILDCARD);
     assert.ok(wcAdv > 0, 'fixture must contain U+25AF');
-    /* Confirmed absent from the built font: Ř ř Ş Š ž (languages.h uses all five). */
+    /* Absent from this fixture's historical ANTONIO_21 build, which hit the compiler's
+       256-glyph cut. The shipped Antonio sizes now keep them (font-coverage.test.js). */
     [0x0158, 0x0159, 0x015E, 0x0160, 0x017E].forEach(function (cp) {
       assert.strictEqual(T.pgGlyphIndex(font, cp), -1, 'U+' + cp.toString(16) + ' should be absent');
       assert.strictEqual(T.pgAdvance(font, cp), wcAdv);
