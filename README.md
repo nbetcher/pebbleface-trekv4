@@ -33,10 +33,11 @@ the watch **pixel for pixel**. Other watches get a close vector preview.
 ## Highlights
 
 - **Drawn, not pictured.** The frame is vector geometry rendered on the watch with
-  anti-aliased edges. There are no theme images at all.
+  anti-aliased edges on color watches. There are no theme images at all.
 - **Make it yours.** Pick one of 12 classic themes, or build your own palette from
   the frame's three regions, two text colors, the background, the Bluetooth symbol
-  and the battery bars.
+  and the battery bars. Black-and-white watches get the classic monochrome look or
+  a custom black-and-white one.
 - **Four watch families.** One design, tuned to each screen: Pebble Time,
   Pebble 2, Pebble 2 Duo and Pebble Time 2.
 - **Red Alert.** Nine Star Trek-themed disconnect vibrations, optional repeats
@@ -87,7 +88,7 @@ languages. Trekv6 is a ground-up rebuild. About 96% of today's source is new.
 |          | Trekv3 (2017)                   | Trekv6                                             |
 | -------- | ------------------------------- | -------------------------------------------------- |
 | Frame    | A full-screen picture per theme | Vector shapes drawn live on the watch              |
-| Color    | 12 fixed themes                 | 12 themes, or your own palette                     |
+| Color    | 12 fixed themes                 | 12 themes, or your own palette (color watches)     |
 | Settings | A plain form                    | Live, pixel-exact preview with tap-to-recolor      |
 | Watches  | 4 platforms, including Round    | 4 platforms, including Time 2 and 2 Duo           |
 | Weather  | Yahoo (since shut down)         | Open-Meteo, no key needed                          |

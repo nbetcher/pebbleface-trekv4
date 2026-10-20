@@ -18,8 +18,11 @@ const MODEL = process.env.CLAUDE_MODEL || "claude-opus-5";
 // ~150k tokens of diff. Past this the diff is cut and the model is told so.
 const MAX_DIFF_CHARS = 600000;
 // Paths whose diffs are noise to a reader: binaries, lockfiles, generated code.
+// resources/data/languages.json is hand-edited watch text, so it stays in the diff.
 const DIFF_EXCLUDES = [
-  ":(exclude)resources/**",
+  ":(exclude)resources/fonts/**",
+  ":(exclude)resources/images/**",
+  ":(exclude)resources/data/languages.bin",
   ":(exclude)package-lock.json",
   ":(exclude)**/*.gen.js",
   ":(exclude)src/c/frame_tables.h",
