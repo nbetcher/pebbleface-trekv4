@@ -48,6 +48,15 @@ test('both Antonio sizes keep every character the date and week text can use', f
   });
 });
 
+test('package.json is ASCII, so the SDK reads the regexes the same in any locale', function () {
+  // pebble-tool and the SDK's waf open package.json in the locale's default encoding;
+  // under a Latin-1 locale a raw Ř in a characterRegex becomes two wrong characters
+  // and the font silently loses every accented letter. Write them as \u escapes.
+  var text = fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8');
+  var bad = text.match(/[^\x00-\x7F]/);
+  assert.equal(bad, null, 'escape ' + JSON.stringify(bad && bad[0]) + ' in package.json as \\uXXXX');
+});
+
 test('the Time 2 preview date font has every date character', function () {
   var font = T.pgFontsInit(GFX.emery.glyphs).ANTONIO_24;
   DATE_CHARS.forEach(function (c) {

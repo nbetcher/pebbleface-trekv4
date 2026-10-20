@@ -40,9 +40,10 @@ platform, so model detection is also used for heart-rate controls.
 ## Settings behavior
 
 The configuration page uses the maintained `@rebble/clay` package and Clay's
-standard Pebble color picker. On vector-rendered watches, each of the 13 drawn LCARS
-frame segments can be selected directly in the pinned preview or from its
-corresponding setting. Clay limits that picker to 64 colors or black/white based
+standard Pebble color picker. The 13 drawn LCARS frame segments are colored as
+three regions (top, middle and bottom): tapping any segment in the pinned preview
+opens its region's color, as does that region's setting. Clay limits that picker to
+64 colors or black/white based
 on the active watch. Other drawn elements expose relevant controls for primary
 and secondary text, screen/dialog background, Bluetooth state, battery bars,
 and each drawn disconnect-alert text treatment.
@@ -94,8 +95,10 @@ pebble build
 ```
 
 `npm run check` performs fast JavaScript syntax checks, `npm test` runs the
-schema, codec, capability, and generated-preview regression suite, and
-`pebble build` compiles and bundles all five entries in `targetPlatforms`. The
+schema, codec, capability, and generated-preview regression suite, then the
+preview's render-time budget (`bench/render-budget.js`) on its own, since timings
+taken while the other test files run in parallel are unreliable, and
+`pebble build` compiles and bundles all four entries in `targetPlatforms`. The
 resulting PBW is written beneath `build/`.
 
 After editing `src/pkjs/clay-custom.js` or any file in `src/pkjs/shim/`, run
@@ -106,15 +109,23 @@ writing anything.
 
 Watch-side language text (day strips, month names, week and date formats) lives in
 `resources/data/languages.json`. The watch loads only the selected language from
-the `LANG_DATA` raw resource, `resources/data/languages.bin`. After editing the JSON,
-run `python3 make_lang_data.py`; `python3 make_lang_data.py --check` (also run in CI)
-reports a stale `.bin`.
+the `LANG_DATA` raw resource, `resources/data/languages.bin`, which `pebble build`
+regenerates from the JSON (via `make_lang_data.py`) before packing resources; commit
+the updated `.bin` with your JSON change. `python3 make_lang_data.py --check` (also
+run in CI) reports a stale `.bin`. The script also rejects week and date text that could
+overflow the watch's 16-byte text buffers. The Settings preview keeps its own copy
+of these strings in `src/pkjs/clay-custom.js` (`DAY_LINES_*`, `MONTH_NAMES`,
+`WEEK_FORMATS` and the date separators in `abbreviatedDate`); update it too, then
+run `python3 make_shim.py`. Adding a language also means a Settings option in
+`config.js`, an entry in `main.c`'s `languageKeys` enum and the `language` list in
+`settings-codec.js`. `npm test` fails until all of them agree with the JSON.
 
 The Pebble font compiler keeps at most 256 glyphs per font, in codepoint order, so
 the Antonio date fonts carry a `characterRegex` in `package.json` listing printable
 ASCII plus the accented letters the languages use. If a language gains a new
-letter, add it to both Antonio regexes; `test/font-coverage.test.js` fails until
-you do.
+letter, add it to both Antonio regexes as a `\uXXXX` escape: the SDK reads
+`package.json` in the locale's encoding, so the file must stay ASCII.
+`test/font-coverage.test.js` fails until you do both.
 
 The preview's font data comes from the compiled fonts, not the TTFs: the glyph
 atlas in `src/pkjs/preview-data.js` (and its copy in `clay-custom.js`) and the
@@ -137,7 +148,7 @@ At a minimum, verify the following on each applicable platform:
 1. The watchface starts without an AppMessage or persistence error.
 2. Only device-supported settings appear.
 3. The pinned preview follows theme, layout, language, weather, and color edits.
-4. Tapping each vector segment opens its Clay color picker and the
+4. Tapping each vector segment opens its region's Clay color picker and the
    saved color appears on the watch.
 5. Battery bars begin white/shaded-white and only use custom colors after the
    opt-in toggle is enabled.
@@ -155,6 +166,12 @@ pebble logs --phone <phone-ip>
 ```
 
 ## Releases
+
+Before publishing, check the licensing gate in
+[THIRD_PARTY_NOTICES.md](../THIRD_PARTY_NOTICES.md): `resources/fonts/LCARS.ttf` is a
+commercial Bitstream font with no embedding license in the repository, and the
+bitmap artwork (weather icons and the other images) has no documented provenance
+(AUDIT.md R-01).
 
 `.github/workflows/build-pbw.yml` builds the PBW in GitHub Actions with the same
 pinned tool/SDK pair listed above (`pebble-tool` 5.0.40, SDK 4.33.1), after running

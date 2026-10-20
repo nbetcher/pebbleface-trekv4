@@ -60,18 +60,26 @@ static enum languageKeys { LANG_EN = 0, LANG_NL, LANG_DE, LANG_FR, LANG_HR, LANG
    in RAM; load_language() swaps it when the setting changes. */
 #define LANG_RECORD_MAX 160
 #define LANG_NSTR       16
+#define LANG_DATA_VERSION 1
 enum { LSTR_DAYS_MON = 0, LSTR_DAYS_SUN = 1, LSTR_MONTH0 = 2, LSTR_WEEK_FMT = 14, LSTR_DATE_FMT = 15 };
 static char lang_buf[LANG_RECORD_MAX];
 static const char *lang_str[LANG_NSTR];
+static int lang_loaded = -1;   // language whose record is in lang_buf, or -1
 
 static void load_language(int lang) {
+  // AppSync re-delivers the language key with every message (the initial sync, the
+  // phone's reconcile, each save and each weather update), so skip the flash reads
+  // when that language is already loaded.
+  if (lang == lang_loaded) { return; }
+  lang_loaded = -1;
+
   static const char empty[] = "";
   for (int i = 0; i < LANG_NSTR; i++) { lang_str[i] = empty; }
 
   ResHandle h = resource_get_handle(RESOURCE_ID_LANG_DATA);
   uint8_t hdr[5], off[4];
   if (resource_load_byte_range(h, 0, hdr, sizeof(hdr)) != sizeof(hdr) ||
-      hdr[0] != 'T' || hdr[1] != 'L' || hdr[2] != 1 || hdr[4] != LANG_NSTR ||
+      hdr[0] != 'T' || hdr[1] != 'L' || hdr[2] != LANG_DATA_VERSION || hdr[4] != LANG_NSTR ||
       lang < 0 || lang >= hdr[3] ||
       resource_load_byte_range(h, 5 + 2 * lang, off, sizeof(off)) != sizeof(off)) {
     APP_LOG(APP_LOG_LEVEL_ERROR, "language %d: bad LANG_DATA header", lang);
@@ -86,18 +94,18 @@ static void load_language(int lang) {
     APP_LOG(APP_LOG_LEVEL_ERROR, "language %d: bad LANG_DATA record", lang);
     return;
   }
-  const char *found[LANG_NSTR];
+  /* The record ends in NUL (checked above), so each strlen stays inside it. */
   int k = 0;
   for (size_t p = 0; p < n && k < LANG_NSTR; k++) {
-    found[k] = lang_buf + p;
-    while (lang_buf[p] != '\0') { p++; }
-    p++;
+    lang_str[k] = lang_buf + p;
+    p += strlen(lang_buf + p) + 1;
   }
   if (k != LANG_NSTR) {
     APP_LOG(APP_LOG_LEVEL_ERROR, "language %d: record has %d strings", lang, k);
+    for (int i = 0; i < LANG_NSTR; i++) { lang_str[i] = empty; }
     return;
   }
-  for (int i = 0; i < LANG_NSTR; i++) { lang_str[i] = found[i]; }
+  lang_loaded = lang;
 }
 
 /* English day-of-month suffix: 1st 2nd 3rd 4th ... 11th 12th 13th ... 21st 31st. */
@@ -293,11 +301,6 @@ static bool bt_status_initialized;
 static TextLayer *steps_label;
 static GBitmap *footprint_icon;
 static BitmapLayer *footprint_layer;
-#elif defined(PBL_HEALTH)
-static TextLayer *steps_label;
-static Layer *footprint_layer;
-#endif
-#if   defined(PBL_HEALTH)
 #define FOOTPRINT_LAYER_GET(l) bitmap_layer_get_layer(l)
 #endif
 
@@ -1386,8 +1389,7 @@ static void tuple_changed_callback( const uint32_t key, const Tuple* tuple_new, 
 #ifdef HAS_HRM
       apply_bpm_layout();
 #elif defined(PBL_HEALTH)
-      // steps_label / footprint_layer only exist when PBL_HEALTH is defined; on
-      // health-less builds they are NULL and must not be touched.
+      // steps_label / footprint_layer are NULL if their create calls failed.
       if (steps_label) { layer_set_hidden(text_layer_get_layer(steps_label), !steps_status); }
       if (footprint_layer) { layer_set_hidden(FOOTPRINT_LAYER_GET(footprint_layer), !steps_status); }
       layer_set_hidden(text_layer_get_layer(text_week_layer),    steps_status);

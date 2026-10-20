@@ -17,7 +17,9 @@ Each atlas entry keeps the codepoints it already has. The day-strip font (and an
 font new to the pack) also gets every character of the day strings in
 resources/data/languages.json, and the fonts that draw the date (font_date, and
 small_batt for the heart-rate bracket layout) get every character of the month
-names and week/date formats. A newly added font starts from the largest existing text subset.
+names and week/date formats. Every font keeps the ellipsis (U+2026), which the
+SDK's compiler always includes for TextLayer overflow. A newly added font starts
+from the largest existing text subset.
 Codepoints the font does not contain are dropped; the watch and the preview then
 both draw the wildcard glyph.
 
@@ -28,6 +30,7 @@ The atlas format is documented in src/pkjs/shim/20-pack.js (prvParsePFA1). The
 compiled-font format is the SDK's fontgen.py "Font v3" (uncompressed only).
 """
 import base64
+import functools
 import json
 import os
 import re
@@ -144,46 +147,50 @@ def atlas_entry(key, max_height, wildcard, glyphs, cps):
             index + struct.pack("<I", len(bitmap)) + bytes(bitmap))
 
 
+ELLIPSIS = 0x2026
+
 # ---- sources -----------------------------------------------------------------
 
-def day_chars():
+@functools.lru_cache(maxsize=None)
+def languages():
     with open(LANGUAGES_JSON, encoding="utf-8") as f:
-        languages = json.load(f)["languages"]
-    return set("".join(l["days_monday_first"] + l["days_sunday_first"] for l in languages))
+        return json.load(f)["languages"]
+
+
+def day_chars():
+    return set("".join(l["days_monday_first"] + l["days_sunday_first"] for l in languages()))
 
 
 def date_chars():
     """Characters the date and week text can contain, minus strftime directives."""
-    with open(LANGUAGES_JSON, encoding="utf-8") as f:
-        languages = json.load(f)["languages"]
     text = "".join("".join(l["months"]) + l["week_format"] + l["date_format"]
-                   for l in languages)
+                   for l in languages())
     return set(re.sub(r"%[A-Za-z]", "", text)) | set("0123456789")
+
+
+@functools.lru_cache(maxsize=None)
+def main_c():
+    with open(MAIN_C, encoding="utf-8") as f:
+        return f.read()
+
+
+def font_loads(var):
+    """(Time 2 resource, 144px resource) that main.c loads into the GFont `var`."""
+    names = re.findall(r"\b" + var + r"\s*=\s*fonts_load_custom_font\(\s*resource_get_handle\("
+                       r"\s*RESOURCE_ID_(\w+)", main_c())
+    if len(names) != 2:
+        raise ValueError("expected two %s loads (emery, then the rest) in main.c" % var)
+    return names[0], names[1]
 
 
 def date_fonts():
     """Time 2 resources that draw date text: font_date and small_batt."""
-    with open(MAIN_C) as f:
-        src = f.read()
-    names = set()
-    for var in ("font_date", "small_batt"):
-        found = re.findall(var + r"\s*=\s*fonts_load_custom_font\(\s*resource_get_handle\("
-                           r"\s*RESOURCE_ID_(\w+)", src)
-        if len(found) != 2:
-            raise ValueError("expected two %s loads (emery, then the rest) in main.c" % var)
-        names.add(found[0])
-    return names
+    return {font_loads(var)[0] for var in ("font_date", "small_batt")}
 
 
 def day_fonts():
     """(Time 2 font_days resource, 144px font_days resource) from main.c."""
-    with open(MAIN_C) as f:
-        src = f.read()
-    names = re.findall(r"font_days\s*=\s*fonts_load_custom_font\(\s*resource_get_handle\("
-                       r"\s*RESOURCE_ID_(\w+)", src)
-    if len(names) != 2:
-        raise ValueError("expected two font_days loads (emery, then the rest) in main.c")
-    return names[0], names[1]
+    return font_loads("font_days")
 
 
 def font_size(resource):
@@ -222,6 +229,9 @@ def rebuild_atlas(pack, emery, days_font_key):
             cps |= days
         if key in date_keys:
             cps |= dates
+        # fontgen always compiles the ellipsis (TextLayer's overflow mark) into a
+        # font, whatever its characterRegex, so keep it wherever the watch has it.
+        cps.add(ELLIPSIS)
         entries.append(atlas_entry(key, max_height, wildcard, glyphs,
                                    sorted(cp for cp in cps if cp in glyphs)))
     blob = b"PFA1" + bytes([len(entries)]) + b"".join(entries)

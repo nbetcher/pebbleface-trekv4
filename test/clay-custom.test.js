@@ -123,15 +123,23 @@ function createDocument() {
   };
 }
 
-function buildHarness(platform, model, metadataAvailable) {
+// options.firmware replaces the default 4.17 firmware; options.values seeds item values
+// the way Clay restores saved settings before AFTER_BUILD.
+function buildHarness(platform, model, metadataAvailable, options) {
+  options = options || {};
   var watchInfo = {
     platform: platform,
     model: model || platform,
-    firmware: { major: 4, minor: 17, patch: 0 }
+    firmware: options.firmware || { major: 4, minor: 17, patch: 0 }
   };
   var definitions = activeItems(config, watchInfo);
   var items = definitions.map(function(definition) {
-    return new FakeItem(definition);
+    var fake = new FakeItem(definition);
+    if (options.values && definition.messageKey &&
+        Object.prototype.hasOwnProperty.call(options.values, definition.messageKey)) {
+      fake.value = options.values[definition.messageKey];
+    }
+    return fake;
   });
   var byMessageKey = {};
   var byId = {};
@@ -517,14 +525,26 @@ test('interactive SVG and Pebble palette accessibility avoid hidden keyboard tra
 
 test('fallback watch metadata stays conservative without claiming a real model', function() {
   // app.js hands Clay the codec's fallback shape when the phone reports no usable
-  // metadata: a 1-bit Pebble 2 with an unknown model, so no heart-rate controls.
+  // metadata: a 1-bit Pebble 2 with an unknown model and 3.0 firmware, so no
+  // heart-rate controls and (HEALTH needs 3.10) no Steps control.
   var fallback = Codec.watchMetadataForClay(null);
-  var harness = buildHarness(fallback.platform, fallback.model, false);
+  var harness = buildHarness(fallback.platform, fallback.model, false, {
+    firmware: fallback.firmware,
+    values: { bottom_left: '0' }
+  });
   var heart = harness.get('bottom_left');
 
   assert.match(harness.get('device_summary').get(), /Watch metadata is unavailable/);
   assert.match(harness.canvas.innerHTML, /viewBox="0 0 144 168"/);
   assert.equal(Boolean(heart && heart.visible), false);
+  assert.equal(harness.get('bottom_right'), null, 'no Steps control without health metadata');
+  // Clay saves hidden items too, so the page must not reset a stored heart-rate
+  // choice it cannot verify: the watch may be a Pebble Time 2 or Pebble 2 HR.
+  assert.equal(heart.get(), '0', 'stored heart-rate choice survives');
+
+  // A watch known to lack heart rate still falls back to the date.
+  var se = buildHarness('diorite', 'pebble_2_se', true, { values: { bottom_left: '0' } });
+  assert.equal(se.get('bottom_left').get(), '1');
 });
 
 test('every platform preview has complete finite battery geometry', function() {
@@ -638,6 +658,35 @@ test('preview day strings are the watch strings, double spaces included', functi
       assert.equal(strip && strip[1], expected, 'language ' + language);
     });
   });
+});
+
+test('preview month names, date order and week formats are the watch text', function() {
+  // The preview keeps its own copy of these strings (MONTH_NAMES, WEEK_FORMATS and
+  // abbreviatedDate's separators); the watch reads them from languages.json.
+  var languages = JSON.parse(fs.readFileSync(
+    path.join(__dirname, '..', 'resources', 'data', 'languages.json'), 'utf8')).languages;
+  var english = languages[0].months;
+  function watchDate(index, month) {
+    // handle_tick on the 20th: strftime(date_format), then the suffix or month name.
+    var language = languages[index];
+    var text = language.date_format.replace('%b', english[month]).replace('%e', '20');
+    return text + (index === 0 ? 'th' : language.months[month]);
+  }
+  for (var month = 0; month < 12; month++) {
+    atDate(2026, month, 20, function() {
+      var harness = buildHarness('basalt', 'pebble_time');
+      languages.forEach(function(language, index) {
+        harness.set('language', String(index));
+        var html = harness.canvas.innerHTML;
+        assert.ok(html.indexOf('>' + watchDate(index, month) + '<') !== -1,
+          language.name + ' month ' + (month + 1) + ' should read ' + watchDate(index, month));
+        if (month === 9) {    // 2026-10-20 is in ISO week 43
+          var week = language.week_format.replace('%V', '43');
+          assert.ok(html.indexOf('>' + week + '<') !== -1, language.name + ' week should read ' + week);
+        }
+      });
+    });
+  }
 });
 
 test('the today block matches the watch for every day, language and screen', function() {

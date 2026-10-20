@@ -29,7 +29,7 @@ function record(index) {
 
 test('languages.bin has the header load_language expects', function() {
   assert.equal(bin.toString('latin1', 0, 2), 'TL');
-  assert.equal(bin[2], 1, 'version');
+  assert.equal(bin[2], define('LANG_DATA_VERSION'), 'version');
   assert.equal(bin[3], languages.length, 'one record per language');
   assert.equal(bin[4], define('LANG_NSTR'), 'strings per record');
 });
@@ -76,4 +76,24 @@ test('the language list lines up with the Settings options', function() {
       'Settings value ' + option.value);
   });
   assert.equal(select.options.length, languages.length);
+});
+
+test('every language reaches the watch through the codec and main.c range checks', function() {
+  // Settings, the phone codec and main.c each bound the language index on their own;
+  // a language added to languages.json has to get through all of them.
+  var m = /enum languageKeys \{([^}]*)\}/.exec(mainC);
+  assert.ok(m, 'main.c declares enum languageKeys');
+  var names = m[1].split(',').map(function(entry) { return entry.trim().split(/\s*=\s*/); });
+  var keys = names.filter(function(entry) { return entry[0] !== 'LANG_END'; });
+  var end = names.filter(function(entry) { return entry[0] === 'LANG_END'; })[0];
+  assert.equal(keys.length, languages.length, 'one languageKeys entry per language');
+  assert.equal(end && end[1], keys[keys.length - 1][0], 'LANG_END names the last language');
+
+  var Codec = require('../src/pkjs/settings-codec.js');
+  languages.forEach(function(language, i) {
+    assert.deepEqual(Codec.buildWatchDictionary({ language: String(i) }, { language: 1 }),
+      { 1: i }, language.name + ' is sent to the watch');
+  });
+  assert.deepEqual(Codec.buildWatchDictionary({ language: String(languages.length) },
+    { language: 1 }), {}, 'an index past the last language is dropped');
 });

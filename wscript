@@ -8,6 +8,8 @@
 
 import os.path
 
+import make_lang_data
+
 top = '.'
 out = 'build'
 
@@ -22,6 +24,10 @@ def configure(ctx):
 
 def build(ctx):
     ctx.load('pebble_sdk')
+
+    # The LANG_DATA resource is generated from resources/data/languages.json.
+    # Rewrite it (only if it changed) so an edited JSON always reaches the watch.
+    make_lang_data.write_if_changed()
 
     build_worker = os.path.exists('worker_src')
     binaries = []

@@ -227,7 +227,7 @@
                     "type": "font"
                 },
                 {
-                    "characterRegex": "[ -~ÁÇÚáäåéíöøúûýČěğŘřŞŠž]",
+                    "characterRegex": "[ -~\u00c1\u00c7\u00da\u00e1\u00e4\u00e5\u00e9\u00ed\u00f6\u00f8\u00fa\u00fb\u00fd\u010c\u011b\u011f\u0158\u0159\u015e\u0160\u017e]",
                     "file": "fonts/Antonio-SemiBold.ttf",
                     "name": "FONT_ANTONIO_24",
                     "targetPlatforms": [
@@ -246,7 +246,7 @@
                     "type": "font"
                 },
                 {
-                    "characterRegex": "[ -~ÁÇÚáäåéíöøúûýČěğŘřŞŠž]",
+                    "characterRegex": "[ -~\u00c1\u00c7\u00da\u00e1\u00e4\u00e5\u00e9\u00ed\u00f6\u00f8\u00fa\u00fb\u00fd\u010c\u011b\u011f\u0158\u0159\u015e\u0160\u017e]",
                     "file": "fonts/Antonio-SemiBold.ttf",
                     "name": "FONT_ANTONIO_17",
                     "targetPlatforms": [
@@ -372,7 +372,7 @@
     "packageManager": "npm@11.17.0",
     "scripts": {
         "check": "node --check src/pkjs/app.js && node --check src/pkjs/config.js && node --check src/pkjs/clay-custom.js && node --check src/pkjs/settings-codec.js && node --check src/pkjs/message-queue.js",
-        "test": "node --test",
+        "test": "node --test && node --test bench/render-budget.js",
         "build": "pebble build"
     },
     "dependencies": {

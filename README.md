@@ -92,7 +92,7 @@ languages. Trekv6 is a ground-up rebuild. About 96% of today's source is new.
 | Watches  | 4 platforms, including Round    | 4 platforms, including Time 2 and 2 Duo           |
 | Weather  | Yahoo (since shut down)         | Open-Meteo, no key needed                          |
 | Alerts   | A single vibration              | 9 themed patterns, repeats and an LCARS popup      |
-| Testing  | None                            | 134 automated tests                                |
+| Testing  | None                            | 141 automated tests                                |
 
 ## Support
 

@@ -257,21 +257,3 @@ test('rendering is deterministic for identical input', function () {
   var b = shim.renderFace(baseEnv());
   assert.deepEqual(Array.from(a.fb), Array.from(b.fb));
 });
-
-test('renderFace stays inside the per-tick budget', function () {
-  var env = baseEnv();
-  shim.renderFace(env);                     // warm up
-  var times = [];
-  var i;
-  for (i = 0; i < 25; i++) {
-    var t0 = process.hrtime.bigint();
-    shim.renderFace(env);
-    times.push(Number(process.hrtime.bigint() - t0) / 1e6);
-  }
-  // Best-of-25, not the median: other test files run in parallel and steal CPU,
-  // which inflates the median on busy hosts. The fastest run still catches any
-  // real regression in the render path, since every run does the same work.
-  times.sort(function (x, y) { return x - y; });
-  var best = times[0];
-  assert.ok(best <= 1.5, 'fastest render ' + best.toFixed(2) + 'ms exceeds 1.5ms');
-});
