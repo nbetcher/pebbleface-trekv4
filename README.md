@@ -4,7 +4,7 @@
 
 **An LCARS watchface for Pebble, drawn live in code.**
 
-<img src="docs/images/faces.png" alt="Trekv6 on Pebble Time 2 in the Enterprise-D, Discovery, Red Alert and Borg palettes" width="100%">
+<img src="docs/images/faces.png" alt="Trekv6 on Pebble Time 2 in six palettes: Gamma Shift, Ten Forward, Risa, Château, Tricorder and Romulan" width="100%">
 
 [**Download**](https://github.com/nbetcher/pebbleface-trekv4/releases/latest) &nbsp;·&nbsp;
 [What's new](.github/release-notes/v6.0.0.md) &nbsp;·&nbsp;
@@ -47,16 +47,18 @@ the watch **pixel for pixel**. Other watches get a close vector preview.
 
 ## Palettes to try
 
-The faces above are custom palettes. Choose **Custom** in Settings and tap your way to:
+Every face above is a custom palette. Choose **Custom** in Settings and tap your way to:
 
-| Palette          | Frame: top · middle · bottom        | Text · secondary text |
-| ---------------- | ----------------------------------- | --------------------- |
-| **Enterprise-D** | Peach · orchid · lavender           | Orange · lavender     |
-| **Discovery**    | Sky blue · Starfleet blue · azure   | Ice blue · sky blue   |
-| **Red Alert**    | Red · crimson · coral               | White · rose          |
-| **Borg**         | Green · dark green · bright green   | Bright green · green  |
+| Palette         | Frame: top · middle · bottom   | Text · secondary  | Background |
+| --------------- | ------------------------------ | ----------------- | ---------- |
+| **Gamma Shift** | Graphite · graphite · orange   | White · silver    | Black      |
+| **Ten Forward** | Slate · slate · apricot        | Apricot · lavender | Navy      |
+| **Risa**        | Orange · silver · cobalt       | Black · cobalt    | White      |
+| **Château**     | Wine · ochre · cream           | Cream · dusty rose | Black     |
+| **Tricorder**   | Black (no frame)               | Amber · amber     | Black      |
+| **Romulan**     | Teal · jade · olive            | Mint · sea green  | Black      |
 
-<p align="center"><img src="docs/images/disconnect.png" alt="The LCARS Bluetooth-disconnected popup in the Red Alert palette" width="240"><br><sub>The disconnect alert, in Red Alert</sub></p>
+<p align="center"><img src="docs/images/disconnect.png" alt="The LCARS Bluetooth-disconnected popup in the Gamma Shift palette" width="240"><br><sub>The disconnect alert, in Gamma Shift</sub></p>
 
 ## Install
 
