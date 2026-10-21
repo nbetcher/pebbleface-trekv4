@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 """Build resources/fonts/LCARS.ttf, the watchface's LCARS-style display font.
 
-Every glyph is drawn here from simple geometry: rectangles, polygons and
-rounded boxes, combined with boolean path operations. Nothing is traced or
-converted from another font. The proportions (cap height, x-height, stroke
-weights, advance widths) follow the ultra-compressed grotesque style of the
-LCARS displays, sized so the existing watch layouts keep fitting.
+Every glyph is drawn here from simple geometry: rectangles, polygons, rounded
+boxes and a few Bezier curves, combined with boolean path operations. Nothing
+is traced or converted from another font. The letter structure (stroke and bar
+positions, corner radii, terminal cuts) follows measurements of the classic
+ultra-compressed LCARS lettering, and the advance widths match it exactly so the
+existing watch layouts keep fitting.
 
 Requires fontTools and skia-pathops:
   uv run --with fonttools==4.67.0 --with skia-pathops==0.9.2 python3 make_font.py
@@ -55,6 +56,9 @@ OVC, OVL = 30, 14                    # overshoot of round capitals / lowercase
 CS, CB, CR = 220, 200, 180           # capitals: stem, bar, round top/bottom
 LS, LB, LR, LA = 197, 170, 142, 126  # lowercase: stem, bar, round, arch at the top
 K = 0.62                             # corner handle length; > 0.552 is squarer than a circle
+KC = 0.552                           # circular corner
+RO, RB, RW = 255, 240, 220           # corner radius: round letters, bowls, the B/R waist
+RL = 205                             # corner radius: round lowercase
 
 # Advance width and ink extents (xmin, xmax) for each character. Digits share
 # one advance so the clock never shifts.
@@ -310,6 +314,69 @@ def s_shape(x0, x1, y_bot, y_top, side, bar, rnd, ry=None):
     return union(up, lo)
 
 
+def wedge(p, u, v, r):
+    """The corner region between two edges leaving p along unit vectors u and v,
+    closed by a quarter curve r units out. Union it into a concave corner to fill
+    it, or subtract it from a convex corner to round it."""
+    a = (p[0] + u[0] * r, p[1] + u[1] * r)
+    b = (p[0] + v[0] * r, p[1] + v[1] * r)
+    c1 = (a[0] + (p[0] - a[0]) * KC, a[1] + (p[1] - a[1]) * KC)
+    c2 = (b[0] + (p[0] - b[0]) * KC, b[1] + (p[1] - b[1]) * KC)
+    return _path(lambda pen: (pen.moveTo(p), pen.lineTo(a), pen.curveTo(c1, c2, b), pen.closePath()))
+
+
+def counter(x0, y0, x1, y1, r=40):
+    """A bowl's counter: square against the stem, slightly rounded on the right."""
+    return rrect(x0, y0, x1, y1, tr=(r, r), br=(r, r), k=KC)
+
+
+def stadium(x0, y0, x1, y1):
+    r = (x1 - x0) / 2.0
+    return rrect(x0, y0, x1, y1, (r, r), (r, r), (r, r), (r, r), k=KC)
+
+
+def oring(x0, y0, x1, y1, side, top, bot, ro=RO):
+    """A round letter: circular outer corners around a stadium-shaped counter."""
+    c = (ro, ro)
+    return minus(rrect(x0, y0, x1, y1, c, c, c, c, k=KC), stadium(x0 + side, y0 + bot, x1 - side, y1 - top))
+
+
+def u_round(x0, x1, y_top, y_bot, side, bot, ro=RO):
+    """Two stems joined by a round bottom, around a stadium-ended counter."""
+    wi = (x1 - x0) - 2 * side
+    ri = (wi / 2.0, wi / 2.0)
+    return minus(rrect(x0, y_bot, x1, y_top, br=(ro, ro), bl=(ro, ro), k=KC),
+                 rrect(x0 + side, y_bot + bot, x1 - side, y_top + 10, br=ri, bl=ri, k=KC))
+
+
+def s_spine(x0, x1, y_bot, y_top, side, thick, cut_top, cut_bot, ro=RO, slope=0.72, half_w=0.253):
+    """S: a round top and bottom joined by a straight diagonal spine. cut_top is where
+    the upper right terminal ends; cut_bot is where the lower left terminal ends."""
+    cx, cy = (x0 + x1) / 2.0, (y_bot + y_top) / 2.0
+    hw = half_w * (x1 - x0)
+    n = (1 + slope * slope) ** 0.5
+    up, down = (0.0, 1.0), (slope / n, -1.0 / n)
+
+    def xc(y):
+        return cx + (cy - y) * slope
+
+    y_out = cy - (x0 + hw - cx) / slope            # spine's outer edge meets the left side
+    y_in = cy - (x0 + side - hw - cx) / slope      # spine's inner edge meets the counter
+
+    def half(cut):
+        c = (ro, ro)
+        wi = (x1 - x0) - 2 * side
+        u = minus(rrect(x0, cy, x1, y_top, tl=c, tr=c, k=KC),
+                  rrect(x0 + side, cy - 10, x1 - side, y_top - thick, tl=(wi / 2.0, wi / 2.0), tr=(wi / 2.0, wi / 2.0), k=KC),
+                  rect(cx, cy - 10, x1 + 10, cut), rect(x0 - 10, cy - 10, cx, y_out))
+        u = union(u, wedge((x0 + side, y_in), up, down, 90))
+        return minus(u, wedge((x0, y_out), up, down, 110))
+
+    spine = inter(poly([(xc(y_bot) - hw, y_bot), (xc(y_top) - hw, y_top), (xc(y_top) + hw, y_top), (xc(y_bot) + hw, y_bot)]),
+                  rect(x0, y_bot, x1, y_top))
+    return union(half(cut_top), rotated180(half(2 * cy - cut_bot), cx, cy), spine)
+
+
 # ---- glyphs ----------------------------------------------------------------------
 
 def ink(ch):
@@ -319,303 +386,293 @@ def ink(ch):
 
 def cap_glyphs():
     g = {}
-    mid = CAP * 0.5
+    top, bot = CAP + OVC, -OVC
 
     a, b = ink('A')
-    c = (a + b) / 2.0
-    t = CS * 0.86
-    aw = CS * 0.40
-    outer = poly([(a, 0), (c - aw, CAP), (c + aw, CAP), (b, 0)])
-    # The counter's edges run parallel to the outer edges, one stroke inside.
-    lx, rx = a + t, b - t
-    sl = (c - aw - a) / CAP
-    apex_y = (rx - lx) / (2 * sl) if sl else CAP
-    inner = poly([(lx, 0), (c, min(apex_y, CAP - CB)), (rx, 0)])
-    g['A'] = union(minus(outer, inner), inter(rect(a, 260, b, 260 + CB * 0.9), outer))
+    outer = poly([(a, 0), (176, CAP), (510, CAP), (b, 0)])
+    lower = poly([(217, 0), (264, 398), (401, 398), (446, 0)])
+    upper = poly([(283, 588), (335, 1262), (385, 588)])
+    g['A'] = minus(outer, lower, upper)
 
+    # Bowls: circular outer corners, near-square counters.
     a, b = ink('B')
-    yb = CAP * 0.53
-    g['B'] = union(rect(a, 0, a + CS, CAP),
-                   bowl(a, yb - CB / 2.0, b - 40, CAP, CS, CB, CB),
-                   bowl(a, 0, b, yb + CB / 2.0, CS, CB, CB))
+    g['B'] = minus(union(rect(a, 0, a + CS, CAP), rect(a, 691, 406, 870),
+                         rrect(a, 780, b, CAP, tr=(RB, RB), br=(RW, RW), k=KC),
+                         rrect(a, 0, b, 775, tr=(RW, RW), br=(RB, RB), k=KC)),
+                   counter(a + CS - 1, 870, 406, 1306), counter(a + CS - 1, 180, 406, 691))
 
     a, b = ink('C')
-    o = ring(a, -OVC, b, CAP + OVC, CS, CR, CR)
-    g['C'] = minus(o, rect((a + b) / 2.0, CAP * 0.34, b + 10, CAP * 0.66))
+    g['C'] = minus(oring(a, bot, b, top, CS, CR, CR + 7), rect((a + b) / 2.0, 573, b + 10, 931))
 
     a, b = ink('D')
-    g['D'] = union(rect(a, 0, a + CS, CAP), bowl(a, 0, b, CAP, CS, CB, CB, ry=0.62 * (b - a)))
+    g['D'] = minus(union(rect(a, 0, a + CS, CAP), rrect(a, 0, b, CAP, tr=(RB, RB), br=(RB, RB), k=KC)),
+                   counter(a + CS - 1, 180, 406, 1306))
 
     a, b = ink('E')
-    g['E'] = union(rect(a, 0, a + CS, CAP), rect(a, CAP - CB, b, CAP),
-                   rect(a, mid - CB / 2.0, b - 40, mid + CB / 2.0), rect(a, 0, b, CB))
+    g['E'] = union(rect(a, 0, a + CS - 1, CAP), rect(a, CAP - CB, b, CAP),
+                   rect(a, 710, b - 6, 903), rect(a, 0, b, 203))
 
     a, b = ink('F')
-    g['F'] = union(rect(a, 0, a + CS, CAP), rect(a, CAP - CB, b, CAP),
-                   rect(a, mid - CB / 2.0 - 20, b - 40, mid + CB / 2.0 - 20))
+    g['F'] = union(rect(a, 0, a + CS - 1, CAP), rect(a, CAP - CB, b, CAP), rect(a, 710, b - 6, 903))
 
     a, b = ink('G')
-    o = ring(a, -OVC, b, CAP + OVC, CS, CR, CR)
-    bar_y = CAP * 0.40
-    g['G'] = union(minus(o, rect((a + b) / 2.0, bar_y + CB, b + 10, CAP * 0.67)),
-                   rect(a + (b - a) * 0.45, bar_y, b, bar_y + CB),
-                   rect(b - CS, 0, b, bar_y + CB))
+    o = oring(a, bot, b, top, CS, CR, CR + 7)
+    c = (a + b) / 2.0
+    corner = minus(rrect(c - 10, bot, 498, 400, br=(200, 200), k=KC), rrect(a + CS, bot + CR + 7, b - CS, top - CR,
+                   tl=(64.5, 64.5), tr=(64.5, 64.5), br=(64.5, 64.5), bl=(64.5, 64.5)))
+    g['G'] = union(minus(o, rect(c, 748, b + 10, 931), rect(c, bot - 10, b + 10, 160)),
+                   corner, rect(307, 566, b, 748), rect(498, 0, b, 566), rect(b - CS, 160, b, 566))
 
     a, b = ink('H')
-    g['H'] = union(rect(a, 0, a + CS, CAP), rect(b - CS, 0, b, CAP),
-                   rect(a, mid - CB / 2.0, b, mid + CB / 2.0))
+    g['H'] = union(rect(a, 0, a + CS - 1, CAP), rect(b - CS + 1, 0, b, CAP), rect(a, 710, b, 913))
 
     a, b = ink('I')
     g['I'] = rect(a, 0, b, CAP)
 
     a, b = ink('J')
-    g['J'] = minus(u_shape(a, b, CAP, -OVC, CS, CR), rect(a - 10, CAP * 0.36, b - CS, CAP + 10))
+    g['J'] = minus(u_round(a, b, CAP, bot, CS, CR), rect(a - 10, 573, b - CS - 2, CAP + 10))
 
     a, b = ink('K')
-    t = CS * 1.15
-    yj = CAP * 0.30
-    arm = band((a + CS - 5, yj), (b, CAP), (b - t, CAP), (a + CS - 5, yj + CB * 1.9))
-    leg = band((a + CS - 5, CAP * 0.56), (b - t, 0), (b, 0), (a + CS - 5 + t, CAP * 0.56))
-    g['K'] = union(rect(a, 0, a + CS, CAP), inter(union(arm, leg), rect(a, 0, b, CAP)))
+    def arm(y, edge):
+        return (298 if edge == 0 else 505) + (y - 870) * (0.26 if edge == 0 else 0.27)
+    def leg(y, edge):
+        return (432 - (y - 20) * 0.203) if edge == 0 else (664 - (y - 20) * 0.227)
+    strokes = union(poly([(arm(750, 0), 750), (arm(CAP, 0), CAP), (arm(CAP, 1), CAP), (arm(750, 1), 750)]),
+                    poly([(leg(0, 0), 0), (leg(810, 0), 810), (leg(810, 1), 810), (leg(0, 1), 0)]))
+    g['K'] = union(rect(a, 0, a + CS - 1, CAP), inter(strokes, rect(a, 0, b, CAP)))
 
     a, b = ink('L')
-    g['L'] = union(rect(a, 0, a + CS, CAP), rect(a, 0, b, CB))
+    g['L'] = union(rect(a, 0, a + CS - 1, CAP), rect(a, 0, b, 203))
 
+    # M, N, V, W: near-vertical strokes, as in the LCARS displays.
+    def slant(x_bot, x_top):
+        """Band between two lines, each given by its x at y=0 and y=CAP."""
+        return poly([(x_bot[0], 0), (x_top[0], CAP), (x_top[1], CAP), (x_bot[1], 0)])
     a, b = ink('M')
-    c = (a + b) / 2.0
-    t = CS * 0.80
-    v = vee(a + CS - t, b - CS + t, CAP, 0, t, foot=1.0)
-    g['M'] = union(rect(a, 0, a + CS, CAP), rect(b - CS, 0, b, CAP), v)
+    g['M'] = union(poly([(a, 0), (a, CAP), (232, CAP), (236, 1220), (246, 820), (246, 0)]),
+                   poly([(702, 0), (718, CAP), (b, CAP), (b, 0)]),
+                   inter(union(slant((369, 506), (224, 400)), slant((456, 586), (576, 729))), rect(a, 0, b, CAP)))
 
     a, b = ink('N')
-    t = CS * 0.95
-    g['N'] = union(rect(a, 0, a + CS, CAP), rect(b - CS, 0, b, CAP),
-                   inter(band((a, CAP), (a + t, CAP), (b, 0), (b - t, 0)), rect(a, 0, b, CAP)))
+    g['N'] = union(poly([(a, 0), (a, CAP), (221, CAP), (236, 0)]),
+                   poly([(562, 0), (546, CAP), (b, CAP), (b, 0)]),
+                   inter(slant((403, 572), (213, 395)), rect(a, 0, b, CAP)))
+
+    a, b = ink('V')
+    g['V'] = inter(union(slant((172, 359), (a, 222)), slant((311, 489), (453, b))), rect(a, 0, b, CAP))
+
+    a, b = ink('W')
+    g['W'] = inter(union(slant((112, 294), (a, 204)), slant((254, 378), (357, 483)),
+                         slant((535, 677), (448, 597)), slant((635, 782), (750, b))), rect(a, 0, b, CAP))
 
     a, b = ink('O')
-    g['O'] = ring(a, -OVC, b, CAP + OVC, CS, CR, CR)
+    g['O'] = oring(a, bot, b, top, CS, CR, CR + 7)
 
     a, b = ink('P')
-    yb = CAP * 0.42
-    g['P'] = union(rect(a, 0, a + CS, CAP), bowl(a, yb, b, CAP, CS, CB, CB))
+    g['P'] = minus(union(rect(a, 0, a + CS, CAP), rrect(a, 576, b, CAP, tr=(RB, RB), br=(230, 230), k=KC)),
+                   counter(a + CS - 1, 750, 406, 1306))
 
     a, b = ink('Q')
-    o = ring(a, -OVC, ink('O')[1], CAP + OVC, CS, CR, CR)
-    t = CS * 0.95
-    tail = band((b - CS - 160, CAP * 0.22), (b - CS - 160 + t, CAP * 0.22), (b, -OVC - 40), (b - t, -OVC - 40))
-    g['Q'] = union(o, inter(tail, rect(a, -OVC - 40, b, CAP)))
+    g['Q'] = union(oring(a, bot, ink('O')[1], top, CS, CR, CR + 7), rrect(400, -180, b, -8, bl=(80, 140), k=KC))
 
     a, b = ink('R')
-    yb = CAP * 0.44
-    bb = b - 40
-    leg = band((bb - CS - 30, yb + CB * 0.5), (bb - 30, yb + CB * 0.5), (b, 0), (b - CS, 0))
-    g['R'] = union(rect(a, 0, a + CS, CAP), bowl(a, yb, bb, CAP, CS, CB, CB),
-                   inter(leg, rect(a, 0, b, yb + CB)))
+    bb = ink('B')[1]
+    flare = _path(lambda p: (p.moveTo((406, 240)), p.lineTo((bb, 240)),
+                             p.curveTo((bb, 120), (b - 30, 50), (b, 0)), p.lineTo((432, 0)),
+                             p.curveTo((416, 60), (406, 120), (406, 240)), p.closePath()))
+    g['R'] = minus(union(rect(a, 0, a + CS, CAP), rect(a, 691, 406, 870),
+                         rrect(a, 780, bb, CAP, tr=(RB, RB), br=(RW, RW), k=KC),
+                         rrect(a + CS - 1, 0, bb, 775, tr=(RW, RW), k=KC), flare),
+                   counter(a + CS - 1, 870, 406, 1306), counter(a + CS - 1, -10, 406, 691))
 
     a, b = ink('S')
-    g['S'] = s_shape(a, b, -OVC, CAP + OVC, CS, CB, CR)
+    g['S'] = s_spine(a, b, bot, top, CS, 175, 931, 570)
 
     a, b = ink('T')
     c = (a + b) / 2.0
-    g['T'] = union(rect(a, CAP - CB, b, CAP), rect(c - CS / 2.0, 0, c + CS / 2.0, CAP))
+    g['T'] = union(rect(a, 1285, b, CAP), rect(186, 0, 406, CAP))
 
     a, b = ink('U')
-    g['U'] = u_shape(a, b, CAP, -OVC, CS, CR)
-
-    a, b = ink('V')
-    g['V'] = vee(a, b, CAP, 0, CS * 0.95, foot=1.0)
-
-    a, b = ink('W')
-    t = CS * 0.80
-    c = (a + b) / 2.0
-    g['W'] = union(vee(a, c + t * 0.5, CAP, 0, t, foot=1.0), vee(c - t * 0.5, b, CAP, 0, t, foot=1.0))
+    g['U'] = u_round(a, b, CAP, bot, CS, CR + 7)
 
     a, b = ink('X')
-    t = CS * 1.0
-    box = rect(a, 0, b, CAP)
-    g['X'] = inter(union(band((a, CAP), (a + t, CAP), (b, 0), (b - t, 0)),
-                         band((b - t, CAP), (b, CAP), (a + t, 0), (a, 0))), box)
+    def band_y(x0a, x0b, y0, x1a, x1b, y1):
+        return poly([(x0a, y0), (x1a, y1), (x1b, y1), (x0b, y0)])
+    g['X'] = inter(union(band_y(159, 342, 770, -10, 244, CAP), band_y(300, 464, 770, 442, 651, CAP),
+                         band_y(a, 186, 0, 174, 333, 770), band_y(424, b, 0, 290, 485, 770)), rect(a, 0, b, CAP))
 
     a, b = ink('Y')
-    c = (a + b) / 2.0
-    t = CS * 0.95
-    yv = CAP * 0.46
-    g['Y'] = union(vee(a, b, CAP, yv, t, foot=1.3), rect(c - CS / 2.0, 0, c + CS / 2.0, yv + 10))
+    g['Y'] = union(rect(184, 0, 410, 560),
+                   inter(union(poly([(a, CAP), (187, CAP), (370, 552), (184, 552)]),
+                               poly([(426, CAP), (b, CAP), (410, 552), (243, 552)])), rect(a, 0, b, CAP)))
 
     a, b = ink('Z')
-    t = CS * 1.05
-    g['Z'] = union(rect(a + 20, CAP - CB, b, CAP), rect(a, 0, b, CB),
-                   inter(band((b - t, CAP - CB), (b, CAP - CB), (a + t, CB), (a, CB)), rect(a, 0, b, CAP)))
+    g['Z'] = union(rect(a + 6, 1285, b, CAP), rect(a, 0, b, 190),
+                   poly([(6, 190), (260, 1285), (492, 1285), (240, 190)]))
     return g
 
 
 def lower_glyphs():
     g = {}
+    top, bot = XH + 10, -17
+    TL, TR = (180, 120), (120, 160)      # arch corners: notched at the stem, round outside
+
+    def arch(x0, x1, cx0, cx1, y_top=XH, c_top=1031):
+        """Lowercase arch springing from a stem at x0, over a stadium-topped counter."""
+        r = ((cx1 - cx0) / 2.0,) * 2
+        return minus(rrect(x0, 0, x1, y_top, tl=TL, tr=TR, k=KC), rrect(cx0, -10, cx1, c_top, tl=r, tr=r, k=KC))
+
+    def bowl(x0, x1, cx0, cx1, y_bot=-10, c_bot=152):
+        """Bowl of b and p: notched against the stem at both ends."""
+        r = ((cx1 - cx0) / 2.0,) * 2
+        return minus(rrect(x0, y_bot, x1, XH, tl=TL, tr=TR, br=TR, bl=TL, k=KC),
+                     rrect(cx0, c_bot, cx1, 1031, tl=r, tr=r, br=r, bl=r, k=KC))
+
     a, b = ink('o')
-    g['o'] = ring(a, -OVL, b, XH + OVL, LS, LR, LR)
+    g['o'] = oring(a, bot, b, top, 199, 142, 140, ro=RL)
 
     a, b = ink('n')
-    g['n'] = union(rect(a, 0, a + LS, XH), arch(a, b, XH + OVL, 0, LS, LA))
-    g['h'] = union(rect(a, 0, a + LS, ASC), arch(a, b, XH + OVL, 0, LS, LA))
+    g['n'] = union(rect(a, 0, 242, 1180), arch(242, b, 242, 332))
+    g['h'] = union(rect(a, 0, 242, ASC), arch(242, b, 242, 332))
     g['u'] = rotated180(g['n'], (a + b) / 2.0, XH / 2.0)
+    g['r'] = union(rect(a, 0, 242, 1180), minus(arch(242, b, 242, 332), rect(242, -10, b + 10, 575)))
 
     a, b = ink('m')
-    m1 = a + (b - a) * 0.5 + LS * 0.5
-    g['m'] = union(rect(a, 0, a + LS, XH), arch(a, m1, XH + OVL, 0, LS, LA),
-                   arch(m1 - LS, b, XH + OVL, 0, LS, LA))
+    g['m'] = union(rect(a, 0, 238, 1180), arch(238, 520, 238, 328), arch(520, b, 520, 610))
 
     a, b = ink('b')
-    g['b'] = union(rect(a, 0, a + LS, ASC), ring(a, -OVL, b, XH + OVL, LS, LR, LR))
+    g['b'] = union(rect(a, 0, 242, ASC), bowl(242, b, 242, 332))
     g['d'] = mirrored(g['b'], (a + b) / 2.0)
-    g['p'] = union(rect(a, DSC, a + LS, XH), ring(a, -OVL, b, XH + OVL, LS, LR, LR))
+    g['p'] = union(rect(a, DSC, 242, 1180), bowl(242, b, 242, 332))
     g['q'] = mirrored(g['p'], (a + b) / 2.0)
 
     a, b = ink('c')
-    g['c'] = minus(ring(a, -OVL, b, XH + OVL, LS, LR, LR),
-                   rect((a + b) / 2.0, XH * 0.33, b + 10, XH * 0.66))
+    g['c'] = minus(oring(a, bot, b, top, 199, 142, 140, ro=RL), rect((a + b) / 2.0, 455, b + 10, 755))
 
     a, b = ink('e')
-    bar_y = XH * 0.46
-    g['e'] = union(minus(ring(a, -OVL, b, XH + OVL, LS, LR, LR),
-                         rect((a + b) / 2.0, XH * 0.30, b + 10, bar_y)),
-                   rect(a, bar_y, b, bar_y + LB))
+    g['e'] = union(minus(oring(a, bot, b, top, 199, 142, 140, ro=RL), rect((a + b) / 2.0, 467, b + 10, 562)),
+                   rect(a, 562, b, 702))
 
     a, b = ink('a')
-    c = (a + b) / 2.0
-    top = minus(ring(a + 15, XH * 0.38, b, XH + OVL, LS, LR, LB),
-                rect(a - 10, XH * 0.38 - 10, c, XH * 0.70))
-    g['a'] = union(top, rect(b - LS, 0, b, XH * 0.70),
-                   ring(a, -OVL, b - 20, XH * 0.60, LS, LB, LR))
+    bs = 522                                       # bowl and stem edge; the foot flares to b
+    shoulder = _path(lambda p: (p.moveTo((326, 870)), p.curveTo((305, 805), (200, 725), (110, 660)),
+                                p.curveTo((60, 620), (a, 560), (a, 470)),
+                                p.lineTo((a, 160)), p.curveTo((a, 66), (117, -10), (211, -10)),
+                                p.lineTo((220, -10)), p.curveTo((275, -10), (322, 40), (322, 115)),
+                                p.closePath()))
+    hole = inter(rrect(237, 152, 326, 620, br=(44, 44), bl=(44, 44), k=KC),
+                 poly([(230, 100), (230, 480), (326, 600), (340, 600), (340, 100)]))
+    g['a'] = union(inter(oring(a, 300, bs, top, 196, 142, 140, ro=RL), rect(a - 10, 755, bs + 10, top + 10)),
+                   rect(326, 0, bs, 1060), poly([(332, 0), (b, 0), (bs, 150), (326, 150)]), minus(shoulder, hole))
 
     a, b = ink('f')
-    xs = a + 70
-    hook = minus(rrect(xs, ASC - 380, b, ASC, tl=(200, 230)), rect(xs + LS, ASC - 381, b + 10, ASC - LB))
-    g['f'] = union(rect(xs, 0, xs + LS, ASC - 100), hook, rect(a, XH - LB, b - 40, XH))
+    g['f'] = union(rect(45, 0, 242, 1320), rrect(45, 1320, b, ASC, tl=(110, 120), k=KC), rect(a, 1025, b, 1180))
 
     a, b = ink('g')
-    bowl_g = ring(a, 60, b, XH + OVL, LS, LR, LR)
-    desc = minus(u_shape(a, b, 1, DSC, LS, LR), rect(a - 10, DSC + LR + 60, a + LS + 10, 10))
-    g['g'] = union(bowl_g, rect(b - LS, DSC + 100, b, XH), desc)
+    gb = minus(rrect(45, 130, 332, XH, tl=TR, tr=TL, br=TL, bl=TR, k=KC), stadium(242, 311, 332, 1031))
+    desc = minus(rrect(45, DSC, b, 85, bl=(230, 200), br=(230, 200), k=KC),
+                 rrect(242, -111, 332, 200, bl=(45, 45), br=(45, 45), k=KC))
+    g['g'] = union(gb, rect(332, -50, b, 1180), desc)
 
     a, b = ink('i')
-    dot = rect(a, ASC - 185, b, ASC)
-    g['i'] = union(rect(a, 0, b, XH), dot)
-    g['dotlessi'] = rect(a, 0, b, XH)
+    g['i'] = union(rect(a, 0, b, 1180), rect(a, 1267, b, ASC))
+    g['dotlessi'] = rect(a, 0, b, 1180)
     g['l'] = rect(a, 0, b, ASC)
 
     a, b = ink('j')
-    hook = minus(rrect(a, DSC, b, DSC + LR + 120, br=(LS, 200)),
-                 rect(a - 10, DSC + LR, b - LS, DSC + LR + 130))
-    g['j'] = union(rect(b - LS, DSC + 150, b, XH), hook, rect(b - LS, ASC - 185, b, ASC))
+    g['j'] = union(rect(45, -100, b, 1180), rect(45, 1267, b, ASC),
+                   rrect(a, DSC, b, -40, tl=(90, 110), br=(110, 130), k=KC))
 
     a, b = ink('k')
-    t = LS * 1.15
-    yj = XH * 0.28
-    arm = band((a + LS - 5, yj), (b, XH), (b - t, XH), (a + LS - 5, yj + LB * 2.0))
-    leg = band((a + LS - 5, XH * 0.55), (b - t, 0), (b, 0), (a + LS - 5 + t, XH * 0.55))
-    g['k'] = union(rect(a, 0, a + LS, ASC), inter(union(arm, leg), rect(a, 0, b, XH)))
-
-    a, b = ink('r')
-    # Full-width shoulder ending in a short drop terminal.
-    shoulder = minus(arch(a, b, XH + OVL, 0, LS, LA), rect(a + LS, -10, b + 10, XH * 0.64))
-    g['r'] = union(rect(a, 0, a + LS, XH), shoulder)
+    arm = poly([(254 + (625 - 650) * 0.184, 625), (254 + (XH - 650) * 0.184, XH),
+                (432 + (XH - 650) * 0.228, XH), (432 + (625 - 650) * 0.228, 625)])
+    leg = poly([(252 + 620 * 0.1825, 0), (252 - 25 * 0.1825, 645), (439 - 25 * 0.207, 645), (439 + 620 * 0.207, 0)])
+    g['k'] = union(rect(a, 0, 242, ASC), rect(242, 625, 262, 645), inter(union(arm, leg), rect(a, 0, b, XH)))
 
     a, b = ink('s')
-    g['s'] = s_shape(a, b, -OVL, XH + OVL, LS, LB, LR)
+    g['s'] = s_spine(a, b, bot, top, 199, 142, 755, 455, ro=RL, slope=0.8, half_w=0.282)
 
     a, b = ink('t')
-    xs = a + 70
-    foot = minus(rrect(xs, -OVL, b, 420, bl=(170, 200)), rect(xs + LS, LR - OVL, b + 10, 421))
-    g['t'] = union(rect(xs, 300, xs + LS, ASC - 120), foot, rect(a, XH - LB, b - 20, XH))
+    g['t'] = union(rect(45, 150, 242, 1410), rrect(45, -5, b, 160, bl=(150, 130), k=KC), rect(a, 1025, b, 1185))
 
     a, b = ink('v')
-    g['v'] = vee(a, b, XH, 0, LS * 0.95, foot=1.0)
+    g['v'] = inter(union(poly([(154.5, 0), (a, XH), (186, XH), (305, 0)]),
+                         poly([(267, 0), (377, XH), (b + 1, XH), (407.5, 0)])), rect(a, 0, b, XH))
 
     a, b = ink('w')
-    t = LS * 0.82
-    c = (a + b) / 2.0
-    g['w'] = union(vee(a, c + t * 0.5, XH, 0, t, foot=1.0), vee(c - t * 0.5, b, XH, 0, t, foot=1.0))
+    g['w'] = inter(union(poly([(139, 0), (a, XH), (207, XH), (279, 0)]), poly([(262, 0), (342, XH), (471, XH), (376, 0)]),
+                         poly([(525, 0), (426, XH), (561, XH), (639, 0)]), poly([(621, 0), (702, XH), (b, XH), (752, 0)])),
+                   rect(a, 0, b, XH))
 
     a, b = ink('x')
-    t = LS * 1.0
-    g['x'] = inter(union(band((a, XH), (a + t, XH), (b, 0), (b - t, 0)),
-                         band((b - t, XH), (b, XH), (a + t, 0), (a, 0))), rect(a, 0, b, XH))
+    g['x'] = inter(union(poly([(114, 650), (10, XH), (210, XH), (284, 650)]), poly([(248, 650), (312, XH), (b, XH), (406, 650)]),
+                         poly([(a, 0), (133, 700), (280, 700), (189, 0)]), poly([(321, 0), (225, 700), (389, 700), (b, 0)])),
+                   rect(a, 0, b, XH))
 
     a, b = ink('y')
-    t = LS * 0.95
-    c = (a + b) / 2.0
-    left = band((a, XH), (a + t, XH), (c + t * 0.5, 0), (c - t * 0.5, 0))
-    slope = (b - c) / XH
-    right = band((b - t, XH), (b, XH), (c + t * 0.5 + DSC * slope, DSC), (c - t * 0.5 + DSC * slope, DSC))
-    g['y'] = union(inter(left, rect(a, 0, b, XH)), inter(right, rect(a, DSC, b, XH)))
+    left = poly([(161, 0), (a, XH), (198, XH), (296, 0)])
+    right = poly([(269, -110), (370, XH), (b, XH), (382, -110)])
+    g['y'] = union(inter(left, rect(a, 0, b, XH)), inter(right, rect(a, -110, b, XH)), rect(163, -110, 300, 1),
+                   rrect(37, DSC, 385, -105, br=(160, 150), k=KC))
 
     a, b = ink('z')
-    t = LS * 1.08
-    g['z'] = union(rect(a + 15, XH - LB, b, XH), rect(a, 0, b, LB),
-                   inter(band((b - t, XH - LB), (b, XH - LB), (a + t, LB), (a, LB)), rect(a, 0, b, XH)))
+    g['z'] = union(rect(a, 1015, 444, XH), rect(a, 0, b, 170), poly([(18, 170), (235, 1015), (444, 1015), (228, 170)]))
     return g
 
 
 def digit_glyphs():
     g = {}
-    H = CAP
-    mid = H / 2.0
+    top, bot = CAP + OVC, -OVC
 
     a, b = ink('0')
-    g['0'] = ring(a, -OVC, b, H + OVC, CS, CR, CR)
+    g['0'] = oring(a, bot, b, top, CS + 1, CR - 5, CR + 2)
 
     a, b = ink('1')
-    flag = poly([(b - CS + 1, H), (a, H - 330), (a, H - 330 - CB * 1.1), (b - CS + 1, H - CB * 1.1)])
-    g['1'] = union(rect(b - CS, 0, b, H), flag)
+    flag = _path(lambda p: (p.moveTo((a, 1145)), p.lineTo((a, 1290)),
+                            p.curveTo((a + 150, 1290), (274, CAP - 135), (274, CAP)),
+                            p.lineTo((b, CAP)), p.lineTo((b, 1145)), p.closePath()))
+    g['1'] = union(rect(233, 0, b, 1146), flag)
 
     a, b = ink('2')
-    top = minus(ring(a + 8, H * 0.40, b - 6, H + OVC, CS, CR, CB),
-                rect(a - 10, H * 0.40 - 10, (a + b) / 2.0, H * 0.72))
-    t = CS * 1.12
-    diag = band((b - 6 - t, H * 0.52), (b - 6, H * 0.52), (a + t, CB - 10), (a, CB - 10))
-    g['2'] = union(top, inter(diag, rect(a, 0, b, H)), rect(a, 0, b, CB))
+    neck = _path(lambda p: (p.moveTo((b, 1110)), p.curveTo((b, 740), (296, 520), (296, 195)),
+                            p.lineTo((53, 195)), p.curveTo((53, 560), (401, 800), (401, 1070)), p.closePath()))
+    g['2'] = union(inter(oring(53, 500, b, top, CS + 1, 181, 175), rect(a - 10, 1080, b + 10, top + 10)),
+                   rect(53, 964, 274, 1100), neck, rect(a, 0, b - 7, 195))
 
     a, b = ink('3')
-    w = b - a
-    up = minus(ring(a + 20, mid - CB / 2.0, b - 12, H + OVC, CS, CR, CB),
-               rect(a + 10, mid + CB / 2.0 - 1, a + w * 0.5, H * 0.73))
-    lo = minus(ring(a, -OVC, b, mid + CB / 2.0, CS, CB, CR),
-               rect(a - 10, H * 0.27, a + w * 0.5, mid - CB / 2.0 + 1))
-    g['3'] = minus(union(up, lo), rect(a - 10, mid - CB / 2.0 - 2, a + w * 0.28, mid + CB / 2.0 + 2))
+    up = minus(rrect(a, 700, b, top, tl=(RO, RO), tr=(RO, RO), br=(RW, RW), k=KC), stadium(272, 823, 397, top - 175))
+    lo = minus(rrect(a, bot, b, 760, tr=(RW, RW), br=(RO, RO), bl=(RO, RO), k=KC), stadium(272, bot + 182, 397, 643))
+    g['3'] = minus(union(up, lo, rect(272, 643, 397, 823)), rect(a - 10, 540, 272, 939))
 
     a, b = ink('4')
-    xs = b - CS - 60
-    yb = H * 0.22
-    t = CS * 1.12
-    diag = band((xs, H), (xs + t * 0.9, H), (a + t, yb + CB), (a, yb + CB))
-    g['4'] = union(rect(xs, 0, xs + CS, H), rect(a, yb, b, yb + CB), inter(diag, rect(a, yb, b, H)))
+    def d4(y, edge):
+        return (277 - (1470 - y) * 0.2956) if edge == 0 else (374 - (1270 - y) * 0.254)
+    stem = poly([(360, 0), (360, 368), (370, 547), (377, 900), (383, 1100), (392, 1220), (396, 1262), (370, 1300), (370, CAP), (580, CAP), (580, 0)])
+    diag = poly([(d4(547, 0), 547), (d4(CAP, 0), CAP), (d4(CAP, 1), CAP), (d4(547, 1), 547)])
+    g['4'] = union(stem, rect(a, 368, b, 547), inter(diag, rect(a, 368, 580, CAP)))
 
     a, b = ink('5')
-    top_bowl = H * 0.60
-    w = b - a
-    rx, ry = w / 2.0, 0.58 * w
-    outer = rrect(a, -OVC, b, top_bowl, tr=(rx, ry), br=(rx, ry), bl=(rx, ry))
-    wi = w - 2 * CS
-    ryi = max(ry - CR, 0.5 * wi)
-    inner = rrect(a + CS, -OVC + CR, b - CS, top_bowl - CB, tr=(wi / 2.0, ryi), br=(wi / 2.0, ryi), bl=(wi / 2.0, ryi))
-    bowl5 = minus(outer, inner, rect(a - 10, H * 0.26, a + CS + 10, top_bowl - CB))
-    g['5'] = union(bowl5, rect(a, top_bowl - CB, a + CS, H), rect(a, H - CB, b - 10, H))
+    bowl5 = minus(rrect(61, bot, 625, 930, tr=(234, 200), br=(RO, RO), bl=(RO, RO), k=KC),
+                  rrect(276, bot + 182, 406, 732, tr=(80, 80), br=(65, 65), bl=(65, 65), k=KC),
+                  rect(50, 540, 276, 732), wedge((291, 930), (1.0, 0.0), (0.0, -1.0), 60))
+    g['5'] = union(bowl5, rect(70, 690, 291, CAP), rect(70, 1295, b, CAP))
 
     a, b = ink('6')
-    lo = ring(a, -OVC, b, H * 0.62, CS, CB, CR)
-    top = minus(ring(a, H * 0.40, b, H + OVC, CS, CR, CB),
-                rect((a + b) / 2.0, H * 0.40 - 10, b + 10, H * 0.74))
-    g['6'] = union(lo, top, rect(a, H * 0.30, a + CS, H * 0.75))
-    g['9'] = rotated180(g['6'], (a + b) / 2.0, H / 2.0)
+    c = (a + b) / 2.0
+    bowl6 = minus(rrect(275, bot, b, 895, tl=(150, 150), tr=(180, 180), br=(RO, RO), k=KC), stadium(276, bot + 182, 406, 703))
+    g['6'] = union(minus(oring(a, bot, b, top, CS - 1, 175, 182), rect(c, 703, b + 10, 941)), bowl6)
+
+    a, b = ink('9')
+    c = (a + b) / 2.0
+    bowl9 = minus(rrect(a, 505, 402, 1000, bl=(150, 210), br=(150, 150), k=KC), stadium(272, 698, 401, top - 185))
+    g['9'] = union(minus(oring(a, bot, b, top, CS + 1, 185, 182), rect(a - 10, 449, c, 698)), bowl9)
 
     a, b = ink('7')
-    t = CS * 1.10
-    g['7'] = union(rect(a, H - CB, b, H),
-                   inter(band((b - t, H - CB), (b, H - CB), (a + 170 + t, 0), (a + 170, 0)), rect(a, 0, b, H)))
+    g['7'] = union(rect(a, 1290, b, CAP),
+                   inter(poly([(70, 0), (400, 1290), (b, 1290), (307, 0)]), rect(a, 0, b, CAP)))
 
     a, b = ink('8')
-    g['8'] = union(ring(a + 22, mid - CB / 2.0, b - 22, H + OVC, CS, CR, CB),
-                   ring(a, -OVC, b, mid + CB / 2.0, CS, CB, CR))
+    g['8'] = union(oring(a, 750, b, top, CS + 1, 175, 118), oring(a, bot, b, 790, CS + 1, 123, 182))
     return g
 
 
@@ -629,68 +686,86 @@ def punct_glyphs():
     g[','] = union(rect(a + 30, 0, b, 233), poly([(a + 30, 0), (b, 0), (a + 90, -230), (a, -230)]))
     a, b = ink(';')
     g[';'] = union(moved(g[','], a - ink(',')[0]), rect(a + 30, 936, b, 1169))
-    a, b = ink('\u2026')
+    a, b = ink('…')
     d = 233
     step = (b - a - d) / 2.0
-    g['\u2026'] = union(*[rect(a + i * step, 0, a + i * step + d, d) for i in range(3)])
+    g['…'] = union(*[rect(a + i * step, 0, a + i * step + d, d) for i in range(3)])
     a, b = ink('-')
     g['-'] = rect(a, 470, b, 470 + CB)
     a, b = ink('+')
-    c, t = (a + b) / 2.0, 110
-    g['+'] = union(rect(a, 640 - t / 2.0, b, 640 + t / 2.0), rect(c - t / 2.0, 640 - (b - a) / 2.0, c + t / 2.0, 640 + (b - a) / 2.0))
+    g['+'] = union(rect(a, 529, b, 694), rect(768, 1, 938, 1221))
     a, b = ink('/')
     t = CS * 0.95
     g['/'] = inter(band((a, -60), (a + t, -60), (b, CAP + 60), (b - t, CAP + 60)), rect(a, -60, b, CAP + 60))
     a, b = ink('!')
-    g['!'] = union(rect(a, 400, b, CAP), rect(a, 0, b, 233))
+    g['!'] = union(rect(a, 330, b, CAP), rect(a, 0, b, 240))
     a, b = ink("'")
     g["'"] = rect(a + 20, CAP - 420, b - 20, CAP)
+
     a, b = ink('?')
-    top = minus(ring(a, CAP * 0.45, b, CAP + OVC, CS, CR, CB),
-                rect(a - 10, CAP * 0.45 - 10, (a + b) / 2.0, CAP * 0.72),
-                rect((a + b) / 2.0 - CS / 2.0, CAP * 0.45 - 10, b + 10, CAP * 0.55))
-    g['?'] = union(top, rect((a + b) / 2.0 - CS / 2.0, 400, (a + b) / 2.0 + CS / 2.0, CAP * 0.62), rect((a + b) / 2.0 - CS / 2.0, 0, (a + b) / 2.0 + CS / 2.0, 233))
+    neck = _path(lambda p: (p.moveTo((b, 1060)), p.curveTo((b, 860), (360, 800), (360, 640)),
+                            p.lineTo((162, 640)), p.curveTo((162, 800), (315, 950), (315, 1060)), p.closePath()))
+    g['?'] = union(inter(oring(a, 500, b, CAP + OVC, 200, 140, 140), rect(a - 10, 1050, b + 10, CAP + OVC + 10)),
+                   rect(a, 945, 225, 1100), neck, rect(162, 330, 360, 641), rect(162, 0, 360, 240))
+
+    # Parentheses: an even-width arc, square-cut at both ends.
     a, b = ink('(')
-    g['('] = minus(rrect(a, -300, b + 300, CAP + 120, tl=(b - a, 600), bl=(b - a, 600)),
-                   rrect(a + CS, -300 + 1, b + 301, CAP + 120 - 1, tl=(b - a - CS, 560), bl=(b - a - CS, 560)),
-                   rect(b, -400, b + 400, CAP + 400))
-    a, b = ink(')')
-    g[')'] = mirrored(moved(g['('], -ink('(')[0] + (2 * a + b) - b - a), 0) if False else \
-        mirrored(g['('], (ink('(')[0] + ink('(')[1] + a + b) / 4.0 * 2 / 2.0 + 0)
+    w, mid = 184, 660
+    def arc_edge(p, dx, down):
+        pts = [(318 + dx, 1490), (200 + dx, 1290), (133 + dx, 950), (133 + dx, mid),
+               (133 + dx, 370), (200 + dx, 30), (318 + dx, -170)]
+        if not down:
+            pts.reverse()
+        p.curveTo(*pts[1:4])
+        p.curveTo(*pts[4:7])
+    def paren(p):
+        p.moveTo((318, 1490))
+        arc_edge(p, 0, True)
+        p.lineTo((318 + w, -170))
+        arc_edge(p, w, False)
+        p.closePath()
+    g['('] = _path(paren)
+    g[')'] = moved(mirrored(g['('], 0), ink(')')[1] + ink('(')[0])
+
     a, b = ink('°')
-    g['°'] = ring(a + 80, CAP - 520, b - 80, CAP + OVC, 120, 110, 110)
+    g['°'] = minus(rrect(a, 869, b, 1465, *[((b - a) / 2.0, 298)] * 4, k=KC),
+                        rrect(a + 110, 979, b - 110, 1355, *[((b - a) / 2.0 - 110, 188)] * 4, k=KC))
+
     a, b = ink('%')
-    w = b - a
-    sm = ring(a, CAP * 0.55, a + w * 0.36, CAP + OVC, 110, 100, 100)
-    sm2 = ring(b - w * 0.36, -OVC, b, CAP * 0.45, 110, 100, 100)
-    sl = inter(band((a + w * 0.30, -OVC), (a + w * 0.30 + 150, -OVC), (b - w * 0.30, CAP + OVC), (b - w * 0.30 - 150, CAP + OVC)), rect(a, -OVC, b, CAP + OVC))
-    g['%'] = union(sm, sm2, sl)
+    slash = poly([(262, -32), (755, 1505), (862, 1505), (369, -32)])
+    g['%'] = union(oring(a, 689, 483, CAP + OVC, 168, 132, 132, ro=200),
+                   oring(647, -OVC, b, 784, 162, 132, 132, ro=200), inter(slash, rect(a, -OVC, b, CAP + OVC)))
     return g
 
 
 def accent(kind, cx, base_top, caps):
     """An accent centered on cx, sitting above base_top (or below the baseline)."""
-    gap = 70 if caps else 90
-    y0 = base_top + gap
-    h = (ASCENT - y0) if caps else 260
-    h = min(h, 290)
+    y0, h = (base_top + 90, 215) if caps else (base_top + 55, 235)
     if kind == 'acute':
-        w = 200
-        return poly([(cx - w * 0.75, y0), (cx - w * 0.75 + 150, y0), (cx + w * 0.75, y0 + h), (cx + w * 0.75 - 170, y0 + h)])
+        c = cx - 18
+        return poly([(c - 58, y0), (c - 58 + 0.32 * h, y0 + h), (c + 58 + 0.62 * h, y0 + h), (c + 58, y0)])
     if kind in ('caron', 'circumflex'):
-        t, w = 120, 330
-        v = vee(cx - w / 2.0, cx + w / 2.0, y0 + h, y0, t, foot=1.2)
-        return v if kind == 'caron' else rotated180(v, cx, y0 + h / 2.0)
+        flat, leg, s = 154, 121, 0.5
+        x0, x1 = cx - flat / 2.0 - s * h, cx + flat / 2.0 + s * h
+        apex = y0 + (flat / 2.0 + s * h - leg) / s      # the inner edges run parallel to the outer
+        hat = minus(poly([(x0, y0), (cx - flat / 2.0, y0 + h), (cx + flat / 2.0, y0 + h), (x1, y0)]),
+                    poly([(x0 + leg, y0 - 1), (cx, apex), (x1 - leg, y0 - 1)]))
+        return hat if kind == 'circumflex' else rotated180(hat, cx, y0 + h / 2.0)
     if kind == 'diaeresis':
-        s = 150
-        return union(rect(cx - 40 - s, y0, cx - 40, y0 + s), rect(cx + 40, y0, cx + 40 + s, y0 + s))
+        return union(rect(cx - 180, y0 + 25, cx - 45, y0 + 210), rect(cx + 45, y0 + 25, cx + 180, y0 + 210))
     if kind == 'ring':
-        return ring(cx - 120, y0, cx + 120, y0 + 240, 85, 70, 70)
+        return minus(rrect(cx - 158, y0, cx + 158, y0 + 330, *[(158, 165)] * 4, k=KC),
+                     rrect(cx - 60, y0 + 90, cx + 60, y0 + 240, *[(60, 75)] * 4, k=KC))
     if kind == 'breve':
-        return u_shape(cx - 160, cx + 160, y0 + 200, y0, 90, 80, ry=140)
+        return minus(rrect(cx - 159, y0, cx + 159, y0 + h, br=(159, 150), bl=(159, 150), k=KC),
+                     rrect(cx - 59, y0 + 95, cx + 59, y0 + h + 10, br=(59, 60), bl=(59, 60), k=KC))
     if kind == 'cedilla':
-        return union(rect(cx - 45, -150, cx + 45, 0), poly([(cx - 45, -150), (cx + 45, -150), (cx - 20, -330), (cx - 140, -330)]))
+        return poly([(cx - 33, 10), (cx + 72, 10), (cx - 19, -260), (cx - 195, -260)])
     raise ValueError(kind)
+
+
+# Optical centering of an accent over its letter, in font units.
+ACCENT_DX = {('dotlessi', 'acute'): -12, ('a', 'diaeresis'): 12, ('a', 'ring'): -6}
 
 
 def accented_glyphs(base):
@@ -700,14 +775,11 @@ def accented_glyphs(base):
         a, b = bw[1], bw[2]
         caps = bch.isupper()
         top = CAP if caps else XH
-        cx = (a + b) / 2.0
+        cx = (a + b) / 2.0 + ACCENT_DX.get((bch, kind), 0)
         shape = base[bch]
         if kind == 'slash':
-            t = LS * 0.85
-            shape = union(shape, inter(band((a - 30, -OVL - 60), (a - 30 + t, -OVL - 60), (b + 30, XH + OVL + 60), (b + 30 - t, XH + OVL + 60)),
-                                       rect(a - 30, -OVL - 60, b + 30, XH + OVL + 60)))
-        elif kind == 'cedilla':
-            shape = union(shape, accent(kind, cx, top, caps))
+            x = lambda y: 6 + (y + 100) * 0.3236
+            shape = union(shape, poly([(x(-130), -130), (x(1330), 1330), (x(1330) + 88, 1330), (x(-130) + 88, -130)]))
         else:
             shape = union(shape, accent(kind, cx, top, caps))
         g[ch] = shape

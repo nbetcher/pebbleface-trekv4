@@ -702,8 +702,8 @@ test('the today block matches the watch for every day, language and screen', fun
       [emery[day][0], 134, emery[day][1], 25], 'Time 2 day ' + day);
   }
   // Accents grow the block to 1px above them (Czech "Út").
-  assert.deepEqual(todayBox('basalt', 'pebble_time', 16, 2), [51, 96, 18, 22]);
-  assert.deepEqual(todayBox('emery', 'pebble_time_2', 16, 2), [70, 131, 24, 28]);
+  assert.deepEqual(todayBox('basalt', 'pebble_time', 16, 2), [51, 97, 18, 21]);
+  assert.deepEqual(todayBox('emery', 'pebble_time_2', 16, 2), [70, 132, 24, 27]);
   // Sides pull in to stay 2px clear of a neighbouring day (Czech "St", Hungarian "P").
   assert.deepEqual(todayBox('emery', 'pebble_time_2', 16, 3), [90, 134, 24, 25]);
   assert.deepEqual(todayBox('emery', 'pebble_time_2', 15, 5), [127, 134, 23, 25]);

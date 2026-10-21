@@ -209,7 +209,7 @@ test('the today highlight is a hard two-colour inversion, as on the watch', func
 
 test('the today block is the watch block, accents and neighbours included', function () {
   // Czech Tuesday ("Ut" with an acute) on Time 2, measured on the emulator: the block
-  // grows to 1px above the accent - x70..93, y131..158.
+  // grows to 1px above the accent - x70..93, y132..158.
   var env = baseEnv({}, { day_line_raw: 'Ne  Po  \u00dat  St  \u010ct  P\u00e1  So' });
   env.tm.wday = 2;
   var r = shim.renderFace(env);
@@ -217,10 +217,10 @@ test('the today block is the watch block, accents and neighbours included', func
     var i = (y * r.w + x) * 4;
     return r.rgba[i] === 255 && r.rgba[i + 1] === 255 && r.rgba[i + 2] === 255;
   }
-  assert.ok(white(70, 131) && white(93, 131) && white(70, 158) && white(93, 158),
+  assert.ok(white(70, 132) && white(93, 132) && white(70, 158) && white(93, 158),
     'block corners');
   assert.ok(!white(69, 145) && !white(94, 145), 'block is 24px wide');
-  assert.ok(!white(82, 130) && !white(82, 159), 'block spans rows 131..158');
+  assert.ok(!white(82, 131) && !white(82, 159), 'block spans rows 132..158');
 });
 
 test('the preview BT rune is the same bitmask the watch draws', function () {
