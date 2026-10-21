@@ -8,9 +8,33 @@
 
 [**Download**](https://github.com/nbetcher/pebbleface-trekv4/releases/latest) &nbsp;·&nbsp;
 [What's new](.github/release-notes/v6.0.0.md) &nbsp;·&nbsp;
+[**Free LCARS font**](#free-lcars-font) &nbsp;·&nbsp;
 [Buy me a coffee](https://buymeacoffee.com/nbetcher)
 
 </div>
+
+## Free LCARS font
+
+> [!IMPORTANT]
+> **[`LCARS.ttf`](resources/fonts/LCARS.ttf) is free for everyone, for any purpose,
+> commercial or not.** Use it, edit it, ship it in your own apps, games, videos or
+> prints, and share it, at no cost. Just keep its copyright notice and license
+> intact: **Copyright (c) 2026 Nick Betcher.**
+
+<p align="center"><img src="docs/images/lcars-font.png" alt="The LCARS.ttf font: capitals, lowercase, digits and accented letters in LCARS colors" width="100%"></p>
+
+Trekv6's LCARS-style display font, an ultra-compressed grotesque, was drawn from
+scratch for this project. It covers A–Z, a–z, 0–9, common punctuation and the
+accented letters of all 17 watchface languages.
+
+| You may | As long as you |
+| --- | --- |
+| Use it in any project, free or paid | Keep the copyright notice and license text unchanged |
+| Edit it and make your own versions | Don't claim you made the original |
+| Share it, on its own or inside your work | Mark edited versions as edited |
+
+Its license is the [zlib License](resources/fonts/LCARS-LICENSE.txt), and the same text
+is embedded in the font file itself. The font is built by [`make_font.py`](make_font.py).
 
 ## See it before you save it
 
@@ -102,8 +126,9 @@ Trekv6 is free. If it brightens your wrist, you can
 
 ## License
 
-Source code is [MIT](LICENSE). Third-party code, fonts and data are listed in
-[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md). Weather data is from
+Source code is [MIT](LICENSE). The [LCARS font](#free-lcars-font) is under the
+[zlib License](resources/fonts/LCARS-LICENSE.txt). Third-party code, fonts and data
+are listed in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md). Weather data is from
 [Open-Meteo](https://open-meteo.com/) under CC BY 4.0.
 
 Trekv6 is an unofficial fan project, not affiliated with or endorsed by CBS

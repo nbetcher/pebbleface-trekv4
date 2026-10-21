@@ -59,6 +59,14 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
+## LCARS.ttf (project font)
+
+`resources/fonts/LCARS.ttf` (family "Trekv6 LCARS") is an original font drawn for
+this project by `make_font.py`. It is not a third-party asset: Copyright (c) 2026
+Nick Betcher, under the zlib License in `resources/fonts/LCARS-LICENSE.txt`. It
+replaces an earlier, commercially licensed font that the project could not
+redistribute.
+
 ## Antonio
 
 `resources/fonts/Antonio-SemiBold.ttf` is distributed under the SIL Open Font
@@ -72,12 +80,10 @@ the configuration page and README.
 
 ## Unresolved bundled assets
 
-`resources/fonts/LCARS.ttf` identifies itself as `Swiss911 UCm BT`, Copyright
-1990-1992 Bitstream Inc., all rights reserved. The repository does not contain
-an app-embedding or redistribution license for it. The origin and redistribution
-terms of the image artwork are also undocumented. Do not treat the repository's
-MIT license as covering those assets; clear or replace them before a public
-release.
+The origin and redistribution terms of the bitmap artwork in `resources/images/`
+(weather icons, the charging, step and heart-rate icons, and the menu icon) are
+undocumented. Do not treat the repository's MIT license as covering it; clear or
+replace it before a public release.
 
 The project also uses Trek-, LCARS-, and Borg-related names and visual themes.
 The repository contains no trademark, fan-work, or other brand-clearance record
@@ -88,5 +94,6 @@ copyright licenses.
 
 Do not distribute the PBW publicly until the unresolved bundled assets above
 have been cleared or replaced. When distributing a cleared build, accompany it
-with `LICENSE`, this file, and `resources/fonts/Antonio-OFL.txt` so the source,
-Clay, pebble-effect-layer, and Antonio license notices travel with the binary.
+with `LICENSE`, this file, `resources/fonts/LCARS-LICENSE.txt` and
+`resources/fonts/Antonio-OFL.txt` so the source, Clay, pebble-effect-layer,
+LCARS and Antonio license notices travel with the binary.

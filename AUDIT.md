@@ -6,6 +6,8 @@ Audited release: 5.2.0
 > [!NOTE]
 > This is a point-in-time record. Since it was written, round watches (Chalk and
 > Gabbro) and the original Pebble (Aplite) have been dropped, which retires R-02.
+> The commercial LCARS.ttf has been replaced by an original font (make_font.py, zlib
+> License), so R-01 now covers only the bitmap artwork.
 > The build, test and release instructions it refers to as "README" now live in
 > [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md).
 

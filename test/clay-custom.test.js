@@ -691,21 +691,22 @@ test('preview month names, date order and week formats are the watch text', func
 
 test('the today block matches the watch for every day, language and screen', function() {
   // Boxes measured on the basalt and Time 2 emulators (x, y, width, height).
-  var basalt = [14, 34, 53, 72, 92, 110, 126];
-  var emery = [21, 47, 73, 99, 125, 149, 172];
+  // Friday's block pulls in 1px to stay 2px clear of "Sa".
+  var basalt = [[14, 18], [34, 18], [53, 18], [72, 18], [92, 18], [110, 17], [126, 18]];
+  var emery = [[20, 26], [47, 26], [73, 26], [99, 26], [125, 26], [149, 25], [171, 26]];
   var day;
   for (day = 0; day < 7; day++) {
-    assert.deepEqual(todayBox('basalt', 'pebble_time', 0, day), [basalt[day], 98, 18, 20],
-      'basalt day ' + day);
-    assert.deepEqual(todayBox('emery', 'pebble_time_2', 0, day), [emery[day], 134, 26, 25],
-      'Time 2 day ' + day);
+    assert.deepEqual(todayBox('basalt', 'pebble_time', 0, day),
+      [basalt[day][0], 98, basalt[day][1], 20], 'basalt day ' + day);
+    assert.deepEqual(todayBox('emery', 'pebble_time_2', 0, day),
+      [emery[day][0], 134, emery[day][1], 25], 'Time 2 day ' + day);
   }
   // Accents grow the block to 1px above them (Czech "Út").
-  assert.deepEqual(todayBox('basalt', 'pebble_time', 16, 2), [52, 97, 18, 21]);
-  assert.deepEqual(todayBox('emery', 'pebble_time_2', 16, 2), [70, 131, 25, 28]);
+  assert.deepEqual(todayBox('basalt', 'pebble_time', 16, 2), [51, 96, 18, 22]);
+  assert.deepEqual(todayBox('emery', 'pebble_time_2', 16, 2), [70, 131, 24, 28]);
   // Sides pull in to stay 2px clear of a neighbouring day (Czech "St", Hungarian "P").
-  assert.deepEqual(todayBox('emery', 'pebble_time_2', 16, 3), [91, 134, 24, 25]);
-  assert.deepEqual(todayBox('emery', 'pebble_time_2', 15, 5), [128, 134, 22, 25]);
+  assert.deepEqual(todayBox('emery', 'pebble_time_2', 16, 3), [90, 134, 24, 25]);
+  assert.deepEqual(todayBox('emery', 'pebble_time_2', 15, 5), [127, 134, 23, 25]);
 });
 
 test('the day strip keeps its double spaces in the browser', function() {

@@ -199,17 +199,6 @@
                     "type": "font"
                 },
                 {
-                    "file": "fonts/LCARS.ttf",
-                    "name": "FONT_LCARS_18",
-                    "targetPlatforms": [
-                        "basalt",
-                        "diorite",
-                        "flint"
-                    ],
-                    "trackingAdjust": 1,
-                    "type": "font"
-                },
-                {
                     "characterRegex": "[0-9:. ]",
                     "file": "fonts/LCARS.ttf",
                     "name": "FONT_LCARS_92",
@@ -268,15 +257,6 @@
                 {
                     "file": "fonts/LCARS.ttf",
                     "name": "FONT_LCARSB_29",
-                    "targetPlatforms": [
-                        "emery"
-                    ],
-                    "trackingAdjust": 1,
-                    "type": "font"
-                },
-                {
-                    "file": "fonts/LCARS.ttf",
-                    "name": "FONT_LCARS_24",
                     "targetPlatforms": [
                         "emery"
                     ],

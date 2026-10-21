@@ -207,7 +207,6 @@ static GFont          font_time;
 static GFont          font_days;
 static GFont          font_date;
 static GFont          small_batt;
-static GFont          small_batt2;
 #if defined(PBL_PLATFORM_EMERY)
 static GFont          batt_font;   // battery % only, sized so digits match the indicator-bar height
 #endif
@@ -1805,13 +1804,11 @@ void handle_init( void ) {
   font_date   = fonts_load_custom_font( resource_get_handle( RESOURCE_ID_FONT_ANTONIO_24 ) );
   small_batt  = fonts_load_custom_font( resource_get_handle( RESOURCE_ID_FONT_LCARSB_26 ) );
   batt_font   = fonts_load_custom_font( resource_get_handle( RESOURCE_ID_FONT_LCARSB_29 ) );
-  small_batt2 = fonts_load_custom_font( resource_get_handle( RESOURCE_ID_FONT_LCARS_24  ) );
   font_time   = fonts_load_custom_font( resource_get_handle( RESOURCE_ID_FONT_LCARS_92  ) );
 #else
   font_days   = fonts_load_custom_font( resource_get_handle( RESOURCE_ID_FONT_LCARS_20 ) );
   font_date   = fonts_load_custom_font( resource_get_handle( RESOURCE_ID_FONT_ANTONIO_17 ) );  // test width-match: emery ANTONIO_24 * 144/200 = 17.3 (was 18 height-match, rendered wide -> date/week letters spread right of emery)
   small_batt  = fonts_load_custom_font( resource_get_handle( RESOURCE_ID_FONT_LCARSB_19 ) );
-  small_batt2 = fonts_load_custom_font( resource_get_handle( RESOURCE_ID_FONT_LCARS_18  ) );
   font_time   = fonts_load_custom_font( resource_get_handle( RESOURCE_ID_FONT_LCARS_68  ) );  // optimal: tested 66/67/68 - 66 +84 RED (height), 67 +11 (green), 68 best. The clock's 51px width-fringe is the floor at 144px height-match
 #endif
 
@@ -2183,7 +2180,6 @@ void handle_deinit( void ) {
 #if defined(PBL_PLATFORM_EMERY)
   if (batt_font) { fonts_unload_custom_font(batt_font); }
 #endif
-  if (small_batt2) { fonts_unload_custom_font(small_batt2); }
 
   // Destroy window (window_destroy frees its root layer; don't touch it separately)
   if (window) { window_destroy(window); }

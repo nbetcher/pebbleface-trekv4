@@ -73,14 +73,12 @@ test('the Time 2 preview day-strip font has every day character', function () {
   });
 });
 
-test('LCARS gaps in the bracket-date font are exactly the ones LCARS.ttf lacks', function () {
+test('the bracket-date font has every date character', function () {
   // small_batt (LCARSB_26) draws the date in the heart-rate bracket layout. The
-  // LCARS typeface has no ě, Ř or ř, so Czech dates there fall back to the
-  // wildcard box on the watch and in the preview alike. Anything else missing
-  // would be a new regression.
+  // project's own LCARS.ttf (make_font.py) includes every letter the languages use.
   var font = T.pgFontsInit(GFX.emery.glyphs).LCARSB_26;
   var missing = DATE_CHARS.filter(function (c) {
     return T.pgGlyphIndex(font, c.charCodeAt(0)) === -1;
-  }).sort();
-  assert.deepEqual(missing, ['Ř', 'ě', 'ř'].sort());
+  });
+  assert.deepEqual(missing, []);
 });
